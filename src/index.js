@@ -79,6 +79,10 @@ const checkUserLogin = async (userId) => {
     if (match) {
         const status = +match[1];
         if (status === 200) {
+            self.isLogin = true;
+            /***清除循环***/
+            self.intervalId && clearInterval(self.intervalId);
+            /***清除循环***/
             await processLoginInfo(bufferText)
         } else if (status === 201) {
             console.log('Please press confirm on your phone.')
@@ -99,9 +103,9 @@ const fn = async () => {
     console.log(userId)
     drawQRImage(userId);
 
-    whileDoing(async (id) => {
+    self.intervalId = whileDoing(async () => {
         await checkUserLogin(userId);
-        clearInterval(id);
+
         webInit();
     })
 

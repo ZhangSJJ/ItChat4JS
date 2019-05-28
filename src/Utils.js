@@ -4,7 +4,7 @@
  */
 'use strict';
 export const whileDoing = (doingFn, intervalTime = 1000) => {
-    const interId = setInterval(() => {
-        doingFn(interId);
-    }, intervalTime)
+    return setInterval(async () => {
+        await doingFn();
+    }, intervalTime);
 };
