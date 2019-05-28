@@ -22,8 +22,8 @@
     "webpack-cli": "^3.3.2"
   },
   "dependencies": {
+    "fast-xml-parser": "^3.12.16",
     "node-fetch": "^2.6.0",
-    "qrcode-terminal": "^0.12.0",
     "querystring": "^0.2.0"
   }
 }
