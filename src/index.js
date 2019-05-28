@@ -107,12 +107,11 @@ const checkUserLogin = async (userId) => {
 
 const webInit = async () => {
     const now = Date.now();
-    const url = `${self.loginUrl}?r=${Math.floor(-now / 1579)}&lang=zh_CN&pass_ticket=${self.pass_ticket}`;
+    let url = `${self.loginUrl}/webwxinit?r=${Math.floor(-now / 1579)}&lang=zh_CN&pass_ticket=${self.pass_ticket}`;
     console.log(url)
     const params = {
         BaseRequest: self.BaseRequest,
-        method: 'post',
-        json: false
+        method: 'post'
     };
     const res = await Fetch(url, params);
     console.log(res)
@@ -131,35 +130,4 @@ const fn = async () => {
 
 };
 
-// fn()
-
-// var data = '<error><ret>0</ret><message></message><skey>@crypt_2cea0d31_3477374853f8e7005293353ccdb1006e</skey><wxsid>py6LmvsRhrrFzLeu</wxsid><wxuin>452613396</wxuin><pass_ticket>9+6tj4AepAbuT+h34vUlmIlzT+lF1dyaulpsZi721HLlK+MUhj+n4ExmLQV3bW9Q</pass_ticket><isgrayscale>1</isgrayscale></error>';
-//
-// console.log(parser.parse(data))
-
-Fetch111('https://gateway.m.uat.qa.nt.ctripcorp.com/restapi/soa2/16357/json/voiceDetail', {
-    "ver": "8.3.2.1",
-    "pageid": 10650015942,
-    "resourceid": 1000624081,
-    "head": {
-        "cid": "09031149111446967275",
-        "ctok": "",
-        "cver": "1.0",
-        "lang": "01",
-        "sid": "8888",
-        "syscode": "09",
-        "auth": null,
-        "extension": [{ "name": "networkstatus", "value": "None" }, { "name": "protocal", "value": "http" }]
-    },
-    "contentType": "json",
-    method:'post'
-}).then(res=>{
-    console.log(res)
-})
-
-
-
-
-
-
-
+fn()
