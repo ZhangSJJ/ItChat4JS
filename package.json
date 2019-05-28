@@ -4,8 +4,25 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "webpack --config webpack.config.js --mode development --watch"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.4.4",
+    "@babel/plugin-transform-runtime": "^7.4.4",
+    "@babel/plugin-transform-strict-mode": "^7.2.0",
+    "@babel/preset-env": "^7.4.4",
+    "@babel/runtime": "^7.4.4",
+    "babel-loader": "^8.0.6",
+    "babel-plugin-transform-remove-strict-mode": "0.0.2",
+    "clean-webpack-plugin": "^2.0.2",
+    "webpack": "^4.31.0",
+    "webpack-cli": "^3.3.2"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.0",
+    "qrcode-terminal": "^0.12.0"
+  }
 }

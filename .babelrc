@@ -1,0 +1,13 @@
+{
+  "presets": [
+    "@babel/env"
+  ],
+  "ignore": [
+    "./ss.js",
+    "./src/qrcode-terminal/lib/main.js"
+  ],
+  "plugins": [
+    "@babel/transform-runtime",
+    "transform-remove-strict-mode"
+  ]
+}
