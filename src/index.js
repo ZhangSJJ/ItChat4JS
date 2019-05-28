@@ -3,8 +3,8 @@
  * @time 2019/5/27
  */
 
-import { BASE_URL, APP_ID, USER_AGENT } from './Config';
-import Fetch from './Fetch';
+import { BASE_URL, APP_ID } from './Config';
+import  Fetch  from './Fetch';
 
 import { whileDoing } from './Utils';
 
@@ -23,8 +23,8 @@ const convertRes = (res) => {
 };
 
 const getUserId = async () => {
-    const url = BASE_URL + `/jslogin?appid=${APP_ID}`;
-    const res = await Fetch(url);
+    const url = BASE_URL + `/jslogin`;
+    const res = await Fetch(url, { appid: APP_ID, json: false });
     const bufferText = convertRes(res);
     console.log(bufferText)
     if (bufferText) {
@@ -51,11 +51,7 @@ const processLoginInfo = async (resText) => {
     const match = resText.match(reg);
     const redirectUrl = match[1];
     self.redirectUrl = redirectUrl;
-    const res = await Fetch(redirectUrl, {
-        headers: {
-            'User-Agent': USER_AGENT
-        }
-    });
+    const res = await Fetch(redirectUrl, { json: false });
 
     const bufferText = convertRes(res);
     const buffer = new Buffer(res.body._buffer);
@@ -65,12 +61,16 @@ const processLoginInfo = async (resText) => {
 
 const checkUserLogin = async (userId) => {
     const now = Date.now();
-    const url = `${BASE_URL}/cgi-bin/mmwebwx-bin/login?loginicon=true&uuid=${userId}&tip=0&r=${Math.floor(-now / 1579)}&_=${now}`;
-    const res = await Fetch(url, {
-        headers: {
-            'User-Agent': USER_AGENT
-        }
-    });
+    const url = `${BASE_URL}/cgi-bin/mmwebwx-bin/login`;
+    const params = {
+        loginicon: true,
+        uuid: userId,
+        tip: 0,
+        r: Math.floor(-now / 1579),
+        _: now,
+        json: false
+    };
+    const res = await Fetch(url, params);
     const bufferText = convertRes(res);
 
     const reg = 'window.code=(\\d+);';
@@ -105,7 +105,6 @@ const fn = async () => {
 
     self.intervalId = whileDoing(async () => {
         await checkUserLogin(userId);
-
         webInit();
     })
 

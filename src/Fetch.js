@@ -1,40 +1,47 @@
 import fetch from 'node-fetch';
+import querystring from 'querystring'
+import { USER_AGENT } from "./Config";
 
 const Fetch = (url, options = {}) => {
-    const { method, ...restOptions } = options;
+    const { headers, method = 'GET', json, timeout, ...restOptions } = options;
+    const methodUpCase = method.toUpperCase();
 
     let finalOptions = {
-        method: method || 'POST',
+        method: methodUpCase,
         credentials: 'include',
         headers: {
+            'User-Agent': USER_AGENT,
             'Content-Type': 'application/json',
-            ...restOptions.headers
+            ...headers
         },
 
     };
-    if (Object.keys(restOptions).length) {
-        finalOptions.body = JSON.stringify(restOptions)
-    }
-    /**
-     * 浏览器端的 fetch 有 credentials: 'include'，会自动带上 cookie
-     * 服务端得手动设置，可以从 context 对象里取 cookie
-     */
 
-    let fetchData = fetch(url, finalOptions)
+    if (!!Object.keys(restOptions).length) {
+        if (methodUpCase === 'POST') {
+            finalOptions.body = JSON.stringify(restOptions)
+        } else if (methodUpCase === 'GET') {
+            let prefix = url.includes('?') ? '&' : '?';
+            url += prefix + querystring.stringify(restOptions)
+        }
+    }
+
+
+    let fetchData = fetch(url, finalOptions);
 
     /**
      * 拓展字段，如果手动设置 options.json 为 false
      * 不自动 JSON.parse
      */
-    // if (restOptions.json !== false) {
-    //     fetchData = fetchData.then(toJSON)
-    // }
+    if (json !== false) {
+        fetchData = fetchData.then(toJSON)
+    }
 
     /**
      * 设置自动化的超时处理
      */
-    if (typeof restOptions.timeout === 'number') {
-        fetchData = timeoutReject(fetchData, restOptions.timeout)
+    if (typeof timeout === 'number') {
+        fetchData = timeoutReject(fetchData, timeout)
     }
 
 
@@ -55,5 +62,6 @@ export function toJSON(response) {
     }
     return response.json();
 }
+
 
 export default Fetch;
