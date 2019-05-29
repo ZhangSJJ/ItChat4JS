@@ -7,9 +7,10 @@ import parser from 'fast-xml-parser';
 import { BASE_URL, APP_ID } from './Config';
 import Fetch, { Fetch111 } from './Fetch';
 
-import { whileDoing } from './Utils';
+import { getUrlDomain, whileDoing } from './Utils';
 
 const qrCode = require('./qrcode-terminal/lib/main');
+import Cookies from './node-js-cookie';
 
 const self = {};
 
@@ -54,6 +55,11 @@ const processLoginInfo = async (resText) => {
     self.redirectUrl = redirectUrl;
     self.loginUrl = redirectUrl.slice(0, redirectUrl.lastIndexOf('/'));
     const res = await Fetch(redirectUrl, { json: false, redirect: 'manual' });
+
+    const cookieArr = (res.headers.raw() || {})['set-cookie'];
+
+    self.cookies = new Cookies(cookieArr);
+
     const buffer = new Buffer(res.body._buffer).toString();
     const { ret, skey, wxsid, wxuin, pass_ticket } = ((parser.parse(buffer)) || {}).error || {};
     if (ret === 0 && !!skey && !!wxsid && !!wxuin && !!pass_ticket) {
@@ -108,10 +114,12 @@ const checkUserLogin = async (userId) => {
 const webInit = async () => {
     const now = Date.now();
     let url = `${self.loginUrl}/webwxinit?r=${Math.floor(-now / 1579)}&lang=zh_CN&pass_ticket=${self.pass_ticket}`;
-    console.log(url)
     const params = {
         BaseRequest: self.BaseRequest,
-        method: 'post'
+        method: 'post',
+        headers: {
+            cookie: self.cookies.getAll(getUrlDomain(url))
+        }
     };
     const res = await Fetch(url, params);
     console.log(res)
