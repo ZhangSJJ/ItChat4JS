@@ -11,6 +11,7 @@ import { getUrlDomain, whileDoing } from './Utils';
 
 const qrCode = require('./qrcode-terminal/lib/main');
 import Cookies from './node-js-cookie';
+import ReturnValueFormat from './ReturnValueFormat';
 import { structFriendInfo } from "./ConvertData";
 
 
@@ -35,7 +36,6 @@ const getUserId = async () => {
     const url = BASE_URL + `/jslogin`;
     const res = await Fetch(url, { appid: APP_ID, json: false });
     const bufferText = convertRes(res);
-    console.log(bufferText)
     if (bufferText) {
         const reg = 'window.QRLogin.code = (\\d+); window.QRLogin.uuid = "(\\S+?)";';
         const match = bufferText.match(reg);
@@ -66,7 +66,6 @@ const processLoginInfo = async (resText) => {
     const cookieArr = (res.headers.raw() || {})['set-cookie'];
 
     self.cookies = new Cookies(cookieArr);
-    console.log(cookieArr)
 
     const buffer = new Buffer(res.body._buffer).toString();
     const { ret, skey, wxsid, wxuin, pass_ticket } = ((parser.parse(buffer)) || {}).error || {};
@@ -78,6 +77,7 @@ const processLoginInfo = async (resText) => {
         self.loginInfo.pass_ticket = pass_ticket;
         self.BaseRequest.DeviceID = 'e' + ((Math.random() + '').substring(2, 17));
         await webInit();
+        await showMobileLogin();
     } else {
         console.log(`Your wechat account may be LIMITED to log in WEB wechat, error info:${buffer}`)
     }
@@ -164,6 +164,25 @@ const webInit = async () => {
             await getMsg();
         }, 3000)
     })
+};
+
+const showMobileLogin = async () => {
+    const url = `${self.loginUrl}/webwxstatusnotify?lang=zh_CN&pass_ticket=${self.loginInfo.pass_ticket}`;
+    const params = {
+        method: 'post',
+        BaseRequest: self.BaseRequest,
+        Code: 3,
+        FromUserName: self.storageClass.userName,
+        ToUserName: self.storageClass.userName,
+        ClientMsgId: Date.now(),
+        headers: {
+            cookie: self.cookies.getAll(getUrlDomain(url))
+        }
+    };
+    const res = await Fetch(url, params);
+    const returnValue = new ReturnValueFormat(res);
+    console.log(returnValue.value())
+
 };
 
 const getMsg = async () => {
