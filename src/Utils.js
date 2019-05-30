@@ -24,3 +24,28 @@ export const getUrlDomain = (url) => {
     }
     return [protocol, hostname].join('//');
 };
+
+
+export const deepClone = data => {
+    const type = Object.prototype.toString.call(data);
+    let result = {};
+    if (type === '[object Array]') {
+        result = [];
+    } else if (type === '[object Object]') {
+        result = {};
+    } else {
+        return data;
+    }
+
+    if (type === '[object Array]') {
+        data.forEach(item => {
+            result.push(deepClone(item));
+        })
+    }
+    if (type === '[object Object]') {
+        Object.keys(data).forEach(key => {
+            result[key] = deepClone(data[key]);
+        })
+    }
+    return result;
+};

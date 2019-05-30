@@ -77,6 +77,13 @@ export default class Cookies {
         return this.cookies[key].getValue(domain)
     }
 
+    getValue(key, domain) {
+        if (!key || !this.cookies[key]) {
+            return '';
+        }
+        return this.cookies[key].getValue(domain).split('=')[1]
+    }
+
     getAll(domain) {
         const keys = Object.keys(this.cookies);
         if (!keys || !keys.length) {

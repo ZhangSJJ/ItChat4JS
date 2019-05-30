@@ -11,8 +11,15 @@ import { getUrlDomain, whileDoing } from './Utils';
 
 const qrCode = require('./qrcode-terminal/lib/main');
 import Cookies from './node-js-cookie';
+import { structFriendInfo } from "./ConvertData";
 
-const self = {};
+
+const self = {
+    BaseRequest: {},
+    loginInfo: {},
+    storageClass: {},
+    memberList: [],
+};
 
 const convertRes = (res) => {
     if (res && res.body && res.body._readableState && res.body._readableState.buffer &&
@@ -59,15 +66,16 @@ const processLoginInfo = async (resText) => {
     const cookieArr = (res.headers.raw() || {})['set-cookie'];
 
     self.cookies = new Cookies(cookieArr);
+    console.log(cookieArr)
 
     const buffer = new Buffer(res.body._buffer).toString();
     const { ret, skey, wxsid, wxuin, pass_ticket } = ((parser.parse(buffer)) || {}).error || {};
     if (ret === 0 && !!skey && !!wxsid && !!wxuin && !!pass_ticket) {
-        self.BaseRequest = {};
-        self.skey = self.BaseRequest.skey = skey;
-        self.wxsid = self.BaseRequest.wxsid = wxsid;
-        self.wxuin = self.BaseRequest.wxuin = wxuin;
-        self.pass_ticket = pass_ticket;
+
+        self.loginInfo.skey = self.BaseRequest.skey = skey;
+        self.loginInfo.wxsid = self.BaseRequest.wxsid = wxsid;
+        self.loginInfo.wxuin = self.BaseRequest.wxuin = wxuin;
+        self.loginInfo.pass_ticket = pass_ticket;
         self.BaseRequest.DeviceID = 'e' + ((Math.random() + '').substring(2, 17));
         await webInit();
     } else {
@@ -113,7 +121,7 @@ const checkUserLogin = async (userId) => {
 
 const webInit = async () => {
     const now = Date.now();
-    let url = `${self.loginUrl}/webwxinit?r=${Math.floor(-now / 1579)}&lang=zh_CN&pass_ticket=${self.pass_ticket}`;
+    let url = `${self.loginUrl}/webwxinit?r=${Math.floor(-now / 1579)}&lang=zh_CN&pass_ticket=${self.loginInfo.pass_ticket}`;
     const params = {
         BaseRequest: self.BaseRequest,
         method: 'post',
@@ -122,8 +130,61 @@ const webInit = async () => {
         }
     };
     const res = await Fetch(url, params);
-    console.log(res)
 
+    self.loginInfo.SyncKey = res.SyncKey;
+    // self.loginInfo.synckey = (res.SyncKey.List || []).map(item => item.key + '_' + item.val).join('|');
+
+    // utils.emoji_formatter(dic['User'], 'NickName')
+    self.loginInfo['InviteStartCount'] = res.InviteStartCount;
+    // self.loginInfo['User'] = wrap_user_dict(structFriendInfo(res.User))
+    self.memberList.push(self.loginInfo['User'])
+
+
+    self.storageClass.userName = res.User.UserName;
+    self.storageClass.nickName = res.User.NickName;
+
+
+    // # deal with contact list returned when init
+
+    const contactList = res.ContactList || [],
+        chatroomList = [], otherList = [];
+
+    contactList.forEach(item => {
+        if (item.Sex !== 0) {
+            otherList.push(item)
+        } else if (item.UserName.indexOf('@@') !== -1) {
+            item.MemberList = []; // don't let dirty info pollute the list
+            chatroomList.push(item)
+        } else if (item.UserName.indexOf('@') !== -1) {
+            // # mp will be dealt in update_local_friends as well
+            otherList.push(item)
+        }
+
+        whileDoing(async () => {
+            await getMsg();
+        }, 3000)
+    })
+};
+
+const getMsg = async () => {
+    const url = `${self.loginUrl}/webwxsync?sid=${self.loginInfo.wxsid}&skey=${self.loginInfo.skey}&pass_ticket=${self.loginInfo.pass_ticket}`;
+    const params = {
+        BaseRequest: self.BaseRequest,
+        method: 'post',
+        SyncKey: self.loginInfo.SyncKey,
+        rr: ~Date.now(),
+        headers: {
+            cookie: self.cookies.getAll(getUrlDomain(url))
+        }
+    };
+    const res = await Fetch(url, params);
+    if (res.BaseResponse.Ret !== 0) {
+        return;
+    }
+    self.loginInfo.SyncKey = res.SyncKey;
+    // self.loginInfo.synckey = (res.SyncKey.List || []).map(item => item.key + '_' + item.val).join('|');
+
+    console.log(res.AddMsgList, res.ModContactList)
 };
 
 const fn = async () => {
