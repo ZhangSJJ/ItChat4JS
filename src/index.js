@@ -5,7 +5,7 @@
 
 import parser from 'fast-xml-parser';
 import { BASE_URL, APP_ID } from './Config';
-import Fetch, { Fetch111 } from './Fetch';
+import Fetch, { Fetch111, toJSON } from './Fetch';
 
 import { getUrlDomain, whileDoing } from './Utils';
 
@@ -209,15 +209,18 @@ const showMobileLogin = async () => {
 
 const startReceiving = (exitCallback) => {
     const intervelId = setInterval(async () => {
-        const res = await syncCheck();
-        const bufferText = convertRes(res);
-        console.log(bufferText, '=====================')
+        const selector = await syncCheck();
+        console.log('selector: ' + selector)
+        if (+selector === 0) {
+            return;
+        }
+        const { msgList, contactList } = await getMsg();
+
     }, 3000)
 };
 
 const syncCheck = async () => {
     const url = `${self.loginInfo['syncUrl'] || self.loginUrl}/synccheck`;
-    console.log(self.cookies.getAll(getUrlDomain(url)))
     const params = {
         r: Date.now(),
         skey: self.loginInfo['skey'],
@@ -231,33 +234,51 @@ const syncCheck = async () => {
             cookie: self.cookies.getAll(getUrlDomain(url))
         }
     };
-    
+
     self.loginInfo['logintime'] += 1;
 
-    return Fetch(url, params);
+    const res = await Fetch(url, params);
+    const bufferText = convertRes(res);
 
+    const reg = 'window.synccheck={retcode:"(\\d+)",selector:"(\\d+)"}';
+    const match = bufferText.match(reg);
+    if (!match || +match[1] !== 0) {
+        throw new Error('Unexpected sync check result: ' + bufferText);
+    }
+    return match[2];
 };
 
 const getMsg = async () => {
+    console.log('getmsg')
     const url = `${self.loginUrl}/webwxsync?sid=${self.loginInfo.wxsid}&skey=${self.loginInfo.skey}&pass_ticket=${self.loginInfo.pass_ticket}`;
     const params = {
         BaseRequest: self.BaseRequest,
         method: 'post',
+        json: false,//为了拿headers更新cookie
         SyncKey: self.loginInfo.syncKey,
         rr: ~Date.now(),
         headers: {
             cookie: self.cookies.getAll(getUrlDomain(url))
         }
     };
-    //todo   更新cookie
-    const res = await Fetch(url, params);
+
+    let res = await Fetch(url, params);
+    //更新cookie
+    const cookieArr = (res.headers.raw() || {})['set-cookie'];
+    self.cookies.updateCookies(cookieArr);
+
+    res = await toJSON(res);
+    
     if (res.BaseResponse.Ret !== 0) {
         return;
     }
     self.loginInfo.syncKey = res.SyncKey;
     self.loginInfo.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
 
-    console.log(res.AddMsgList, res.ModContactList)
+    return {
+        msgList: res.AddMsgList,
+        contactList: res.ModContactList
+    }
 };
 
 const fn = async () => {
