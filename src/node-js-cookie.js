@@ -121,5 +121,13 @@ export default class Cookies {
         }
         this.cookies[key] = new Cookie(key + '=' + value + cookieStr)
     }
+
+    updateCookies(cookieArr = []) {
+        cookieArr.forEach(str => {
+            const cookie = new Cookie(str);
+            //直接更新，不考虑不同path和domain
+            this.cookies[cookie.key] = cookie;
+        });
+    }
 }
 

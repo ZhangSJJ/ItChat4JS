@@ -156,8 +156,8 @@ const webInit = async () => {
     };
     const res = await Fetch(url, params);
 
-    self.loginInfo.SyncKey = res.SyncKey;
-    // self.loginInfo.synckey = (res.SyncKey.List || []).map(item => item.key + '_' + item.val).join('|');
+    self.loginInfo.syncKey = res.SyncKey;
+    self.loginInfo.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
 
     // utils.emoji_formatter(dic['User'], 'NickName')
     self.loginInfo['InviteStartCount'] = res.InviteStartCount;
@@ -217,21 +217,21 @@ const startReceiving = (exitCallback) => {
 
 const syncCheck = async () => {
     const url = `${self.loginInfo['syncUrl'] || self.loginUrl}/synccheck`;
-console.log(self.cookies.getAll(getUrlDomain(url)))
+    console.log(self.cookies.getAll(getUrlDomain(url)))
     const params = {
         r: Date.now(),
         skey: self.loginInfo['skey'],
         sid: self.loginInfo['wxsid'],
         uin: self.loginInfo['wxuin'],
         deviceid: self.loginInfo['deviceid'],
-        synckey: self.loginInfo['synckey'],
+        synckey: self.loginInfo.syncKeyStr,
         _: self.loginInfo['logintime'],
         json: false,
         headers: {
             cookie: self.cookies.getAll(getUrlDomain(url))
         }
     };
-
+    
     self.loginInfo['logintime'] += 1;
 
     return Fetch(url, params);
@@ -243,7 +243,7 @@ const getMsg = async () => {
     const params = {
         BaseRequest: self.BaseRequest,
         method: 'post',
-        SyncKey: self.loginInfo.SyncKey,
+        SyncKey: self.loginInfo.syncKey,
         rr: ~Date.now(),
         headers: {
             cookie: self.cookies.getAll(getUrlDomain(url))
@@ -254,8 +254,8 @@ const getMsg = async () => {
     if (res.BaseResponse.Ret !== 0) {
         return;
     }
-    self.loginInfo.SyncKey = res.SyncKey;
-    // self.loginInfo.synckey = (res.SyncKey.List || []).map(item => item.key + '_' + item.val).join('|');
+    self.loginInfo.syncKey = res.SyncKey;
+    self.loginInfo.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
 
     console.log(res.AddMsgList, res.ModContactList)
 };
