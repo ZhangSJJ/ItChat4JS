@@ -13,6 +13,7 @@ const qrCode = require('./qrcode-terminal/lib/main');
 import Cookies from './node-js-cookie';
 import ReturnValueFormat from './ReturnValueFormat';
 import { structFriendInfo } from "./ConvertData";
+import Contact from "./Contact";
 
 
 const self = {
@@ -78,6 +79,9 @@ const processLoginInfo = async (resText) => {
         self.BaseRequest.DeviceID = 'e' + ((Math.random() + '').substring(2, 17));
         await webInit();
         await showMobileLogin();
+        self.contactIns = new Contact(self);
+        await self.contactIns.getContact(true);
+        console.log(self.contactIns, '=========================')
     } else {
         console.log(`Your wechat account may be LIMITED to log in WEB wechat, error info:${buffer}`)
     }
@@ -139,7 +143,6 @@ const webInit = async () => {
     // self.loginInfo['User'] = wrap_user_dict(structFriendInfo(res.User))
     self.memberList.push(self.loginInfo['User'])
 
-
     self.storageClass.userName = res.User.UserName;
     self.storageClass.nickName = res.User.NickName;
 
@@ -159,11 +162,10 @@ const webInit = async () => {
             // # mp will be dealt in update_local_friends as well
             otherList.push(item)
         }
-
-        whileDoing(async () => {
-            await getMsg();
-        }, 3000)
-    })
+    });
+    whileDoing(async () => {
+        await getMsg();
+    }, 3000)
 };
 
 const showMobileLogin = async () => {
@@ -196,6 +198,7 @@ const getMsg = async () => {
             cookie: self.cookies.getAll(getUrlDomain(url))
         }
     };
+    //todo   更新cookie
     const res = await Fetch(url, params);
     if (res.BaseResponse.Ret !== 0) {
         return;

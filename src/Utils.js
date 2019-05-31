@@ -49,3 +49,11 @@ export const deepClone = data => {
     }
     return result;
 };
+
+export const isArray = data => {
+    return Object.prototype.toString.call(data) === '[object Array]';
+};
+
+export const isObject = data => {
+    return Object.prototype.toString.call(data) === '[object Object]';
+};

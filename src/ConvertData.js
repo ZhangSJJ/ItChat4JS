@@ -3,8 +3,9 @@
  * @time 2019/5/29
  */
 
+
 'use strict';
-import { deepClone } from "./Utils";
+import { deepClone, isArray, isObject } from "./Utils";
 
 /**
  * jiegouhua
@@ -32,4 +33,18 @@ export const structFriendInfo = (userInfo) => {
         member[key] = userInfo[key]
     });
     return member
+};
+
+/**
+ * 对象中的数组和对象不更新
+ * @param oldInfoDict
+ * @param newInfoDict
+ */
+export const updateInfoDict = (oldInfoDict, newInfoDict) => {
+    Object.keys(newInfoDict).forEach(key => {
+        const value = newInfoDict[key];
+        if (!isArray(value) && !isObject(value) && !!value) {
+            oldInfoDict[key] = value;
+        }
+    })
 };
