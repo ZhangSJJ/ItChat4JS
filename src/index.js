@@ -63,25 +63,46 @@ const processLoginInfo = async (resText) => {
     self.redirectUrl = redirectUrl;
     self.loginUrl = redirectUrl.slice(0, redirectUrl.lastIndexOf('/'));
     const res = await Fetch(redirectUrl, { json: false, redirect: 'manual' });
-
     const cookieArr = (res.headers.raw() || {})['set-cookie'];
-
     self.cookies = new Cookies(cookieArr);
+
+
+    const urlInfo = [["wx2.qq.com", ["file.wx2.qq.com", "webpush.wx2.qq.com"]],
+        ["wx8.qq.com", ["file.wx8.qq.com", "webpush.wx8.qq.com"]],
+        ["qq.com", ["file.wx.qq.com", "webpush.wx.qq.com"]],
+        ["web2.wechat.com", ["file.web2.wechat.com", "webpush.web2.wechat.com"]],
+        ["wechat.com", ["file.web.wechat.com", "webpush.web.wechat.com"]]
+    ];
+
+    self.loginInfo['deviceid'] = 'e' + ((Math.random() + '').substring(2, 17));
+    self.loginInfo['logintime'] = Date.now();
+
+    urlInfo.forEach(([indexUrl, [fileUrl, syncUrl]]) => {
+        if (self.loginUrl.indexOf(indexUrl) !== -1) {
+            self.loginInfo['fileUrl'] = fileUrl;
+            self.loginInfo['syncUrl'] = syncUrl;
+        } else {
+            self.loginInfo['fileUrl'] = self.loginInfo['syncUrl'] = self.loginUrl;
+        }
+    });
 
     const buffer = new Buffer(res.body._buffer).toString();
     const { ret, skey, wxsid, wxuin, pass_ticket } = ((parser.parse(buffer)) || {}).error || {};
     if (ret === 0 && !!skey && !!wxsid && !!wxuin && !!pass_ticket) {
-
         self.loginInfo.skey = self.BaseRequest.skey = skey;
         self.loginInfo.wxsid = self.BaseRequest.wxsid = wxsid;
         self.loginInfo.wxuin = self.BaseRequest.wxuin = wxuin;
         self.loginInfo.pass_ticket = pass_ticket;
-        self.BaseRequest.DeviceID = 'e' + ((Math.random() + '').substring(2, 17));
+        self.BaseRequest.DeviceID = self.loginInfo['deviceid'];
+
+        self.contactIns = new Contact(self);
+
         await webInit();
         await showMobileLogin();
-        self.contactIns = new Contact(self);
+
         await self.contactIns.getContact(true);
-        console.log(self.contactIns, '=========================')
+        startReceiving();
+        // console.log(self.contactIns, '=========================')
     } else {
         console.log(`Your wechat account may be LIMITED to log in WEB wechat, error info:${buffer}`)
     }
@@ -141,7 +162,7 @@ const webInit = async () => {
     // utils.emoji_formatter(dic['User'], 'NickName')
     self.loginInfo['InviteStartCount'] = res.InviteStartCount;
     // self.loginInfo['User'] = wrap_user_dict(structFriendInfo(res.User))
-    self.memberList.push(self.loginInfo['User'])
+    // self.contactIns.memberList.push(self.loginInfo['User'])
 
     self.storageClass.userName = res.User.UserName;
     self.storageClass.nickName = res.User.NickName;
@@ -163,9 +184,7 @@ const webInit = async () => {
             otherList.push(item)
         }
     });
-    whileDoing(async () => {
-        await getMsg();
-    }, 3000)
+
 };
 
 const showMobileLogin = async () => {
@@ -183,7 +202,39 @@ const showMobileLogin = async () => {
     };
     const res = await Fetch(url, params);
     const returnValue = new ReturnValueFormat(res);
-    console.log(returnValue.value())
+    // console.log(returnValue.value())
+
+};
+
+
+const startReceiving = (exitCallback) => {
+    const intervelId = setInterval(async () => {
+        const res = await syncCheck();
+        const bufferText = convertRes(res);
+        console.log(bufferText, '=====================')
+    }, 3000)
+};
+
+const syncCheck = async () => {
+    const url = `${self.loginInfo['syncUrl'] || self.loginUrl}/synccheck`;
+console.log(self.cookies.getAll(getUrlDomain(url)))
+    const params = {
+        r: Date.now(),
+        skey: self.loginInfo['skey'],
+        sid: self.loginInfo['wxsid'],
+        uin: self.loginInfo['wxuin'],
+        deviceid: self.loginInfo['deviceid'],
+        synckey: self.loginInfo['synckey'],
+        _: self.loginInfo['logintime'],
+        json: false,
+        headers: {
+            cookie: self.cookies.getAll(getUrlDomain(url))
+        }
+    };
+
+    self.loginInfo['logintime'] += 1;
+
+    return Fetch(url, params);
 
 };
 
