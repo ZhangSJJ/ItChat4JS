@@ -7,7 +7,7 @@ import parser from 'fast-xml-parser';
 import { BASE_URL, APP_ID } from './Config';
 import Fetch, { Fetch111, toJSON } from './Fetch';
 
-import { getUrlDomain, whileDoing } from './Utils';
+import { getUrlDomain, WhileDoing } from './Utils';
 
 const qrCode = require('./qrcode-terminal/lib/main');
 import Cookies from './node-js-cookie';
@@ -131,7 +131,7 @@ const checkUserLogin = async (userId) => {
         if (status === 200) {
             self.isLogin = true;
             /***清除循环***/
-            self.intervalId && clearInterval(self.intervalId);
+            self.loginWhileDoing.end();
             /***清除循环***/
             await processLoginInfo(bufferText)
         } else if (status === 201) {
@@ -208,15 +208,22 @@ const showMobileLogin = async () => {
 
 
 const startReceiving = (exitCallback) => {
-    const intervelId = setInterval(async () => {
+
+    const doingFn = async () => {
         const selector = await syncCheck();
         console.log('selector: ' + selector)
         if (+selector === 0) {
             return;
         }
         const { msgList, contactList } = await getMsg();
+        console.log(msgList, '\n=====================================')
 
-    }, 3000)
+    };
+
+    self.getMsgWhileDoing = new WhileDoing(doingFn, 3000);
+    self.getMsgWhileDoing.start();
+
+
 };
 
 const syncCheck = async () => {
@@ -268,7 +275,7 @@ const getMsg = async () => {
     self.cookies.updateCookies(cookieArr);
 
     res = await toJSON(res);
-    
+
     if (res.BaseResponse.Ret !== 0) {
         return;
     }
@@ -286,10 +293,10 @@ const fn = async () => {
     console.log(userId)
     drawQRImage(userId);
 
-    self.intervalId = whileDoing(async () => {
+    self.loginWhileDoing = new WhileDoing(async () => {
         await checkUserLogin(userId);
-    })
-
+    });
+    self.loginWhileDoing.start();
 
 };
 

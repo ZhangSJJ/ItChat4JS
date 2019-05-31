@@ -3,11 +3,39 @@
  * @time 2019/5/27
  */
 'use strict';
-export const whileDoing = (doingFn, intervalTime = 1000) => {
-    return setInterval(async () => {
-        await doingFn();
-    }, intervalTime);
-};
+
+export class WhileDoing {
+    constructor(doingFn, intervalTime = 1000) {
+        this.doingFn = doingFn;
+        this.intervalTime = intervalTime;
+        this.doId = null;
+        this.endFlag = false;
+    }
+
+    start() {
+        const doFn = async () => {
+            this.clearId();
+            await this.doingFn();
+            this.doId = setTimeout(async () => {
+                if (this.endFlag) {
+                    this.clearId();
+                    return;
+                }
+                await doFn();
+            }, this.intervalTime)
+        };
+        doFn();
+    }
+
+    end() {
+        this.endFlag = true;
+    }
+
+    clearId() {
+        this.doId && clearTimeout(this.doId);
+        this.doId = null;
+    }
+}
 
 export const getUrlDomain = (url) => {
     if (!url) {
