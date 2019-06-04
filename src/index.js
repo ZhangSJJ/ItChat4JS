@@ -14,6 +14,7 @@ import Cookies from './node-js-cookie';
 import ReturnValueFormat from './ReturnValueFormat';
 import { structFriendInfo } from "./ConvertData";
 import Contact from "./Contact";
+import { wrapUserDict } from "./Templates";
 
 
 const self = {
@@ -102,7 +103,6 @@ const processLoginInfo = async (resText) => {
 
         await self.contactIns.getContact(true);
         startReceiving();
-        // console.log(self.contactIns, '=========================')
     } else {
         console.log(`Your wechat account may be LIMITED to log in WEB wechat, error info:${buffer}`)
     }
@@ -161,8 +161,8 @@ const webInit = async () => {
 
     // utils.emoji_formatter(dic['User'], 'NickName')
     self.loginInfo['InviteStartCount'] = res.InviteStartCount;
-    // self.loginInfo['User'] = wrap_user_dict(structFriendInfo(res.User))
-    // self.contactIns.memberList.push(self.loginInfo['User'])
+    self.loginInfo['User'] = wrapUserDict(structFriendInfo(res.User)).getValue();
+    self.contactIns.memberList.push(self.loginInfo['User']);
 
     self.storageClass.userName = res.User.UserName;
     self.storageClass.nickName = res.User.NickName;
