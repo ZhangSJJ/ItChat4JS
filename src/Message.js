@@ -2,7 +2,9 @@
  * @author shangjiezhang@ctrip.com
  * @time 2019/5/31
  */
+
 'use strict';
+import { msgFormatter } from "./Utils";
 
 /**
  * 处理message
@@ -27,9 +29,10 @@ class Message {
 
             // produce basic message
             if (msg.FromUserName.indexOf('@@') !== -1 || msg.ToUserName.indexOf('@@') !== -1) {
-                produce_group_chat(core, m)
+                //todo
+                // produce_group_chat(core, m)
             } else {
-                utils.msg_formatter(m, 'Content')
+                msgFormatter(msg, 'Content')
             }
 
         });

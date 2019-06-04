@@ -85,3 +85,23 @@ export const isArray = data => {
 export const isObject = data => {
     return Object.prototype.toString.call(data) === '[object Object]';
 };
+
+export const escape = (str = '') => {
+    str = '' + str;
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+};
+
+export const unescape = (str = '') => {
+    str = '' + str;
+    return str.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+};
+
+export const msgFormatter = (data, key) => {
+    //todo
+    // emoji_formatter(data, key)
+    data[key] = (data[key] + '').replace('<br/>', '\n');
+    data[key] = unescape(data[key]);
+};
+
+
+

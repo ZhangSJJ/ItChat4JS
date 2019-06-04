@@ -7,7 +7,7 @@ import parser from 'fast-xml-parser';
 import { BASE_URL, APP_ID } from './Config';
 import Fetch, { Fetch111, toJSON } from './Fetch';
 
-import { getUrlDomain, WhileDoing } from './Utils';
+import { getUrlDomain, msgFormatter, WhileDoing } from './Utils';
 
 const qrCode = require('./qrcode-terminal/lib/main');
 import Cookies from './node-js-cookie';
@@ -216,7 +216,10 @@ const startReceiving = (exitCallback) => {
             return;
         }
         const { msgList, contactList } = await getMsg();
-        console.log(msgList, '\n=====================================')
+
+        console.log(msgList[0].Content, '\n=====================================')
+        msgFormatter(msgList[0],'Content')
+        console.log(msgList[0].Content)
 
     };
 
@@ -301,3 +304,4 @@ const fn = async () => {
 };
 
 fn()
+
