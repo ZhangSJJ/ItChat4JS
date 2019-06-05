@@ -14,6 +14,7 @@ import ReturnValueFormat from './ReturnValueFormat';
 import { structFriendInfo } from "./ConvertData";
 import Contact from "./Contact";
 import { wrapUserDict } from "./Templates";
+import NodeWeChat from './NodeWeChat';
 
 
 const self = {
@@ -217,7 +218,7 @@ const startReceiving = (exitCallback) => {
         const { msgList, contactList } = await getMsg();
 
         console.log(msgList[0].Content, '\n=====================================')
-        msgFormatter(msgList[0],'Content')
+        msgFormatter(msgList[0], 'Content')
         console.log(msgList[0].Content)
 
     };
@@ -302,5 +303,7 @@ const fn = async () => {
 
 };
 
-fn()
+// fn()
+const NodeWeChatIns = new NodeWeChat();
+NodeWeChatIns.run()
 
