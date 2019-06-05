@@ -1,6 +1,5 @@
 /**
  * 请求返回值格式化
- * @author shangjiezhang@ctrip.com
  * @time 2019/5/30
  */
 'use strict';
