@@ -15,6 +15,7 @@ import ReturnValueFormat from './ReturnValueFormat';
 import { structFriendInfo } from "./ConvertData";
 import Contact from "./Contact";
 import { wrapUserDict } from "./Templates";
+import Message from './Message';
 
 export default class NodeWeChat {
     constructor(props = {}) {
@@ -22,7 +23,7 @@ export default class NodeWeChat {
         this.fridendChat = {};
         this.groupChat = {};
         this.mpChat = {};
-        this.init()
+        this.init();
     }
 
     init() {
@@ -32,6 +33,9 @@ export default class NodeWeChat {
             storageClass: {},
             memberList: [],
         };
+        this.mssageIns = new Message({
+            store: this.store
+        });
     }
 
     async getUserId() {
@@ -125,9 +129,9 @@ export default class NodeWeChat {
         const buffer = new Buffer(res.body._buffer).toString();
         const { ret, skey, wxsid, wxuin, pass_ticket } = ((parser.parse(buffer)) || {}).error || {};
         if (ret === 0 && !!skey && !!wxsid && !!wxuin && !!pass_ticket) {
-            this.store.loginInfo.skey = this.store.BaseRequest.skey = skey;
-            this.store.loginInfo.wxsid = this.store.BaseRequest.wxsid = wxsid;
-            this.store.loginInfo.wxuin = this.store.BaseRequest.wxuin = wxuin;
+            this.store.loginInfo.skey = this.store.BaseRequest.Skey = skey;
+            this.store.loginInfo.wxsid = this.store.BaseRequest.Sid = wxsid;
+            this.store.loginInfo.wxuin = this.store.BaseRequest.Uin = wxuin;
             this.store.loginInfo.pass_ticket = pass_ticket;
             this.store.BaseRequest.DeviceID = this.store.loginInfo['deviceid'];
 
@@ -154,9 +158,14 @@ export default class NodeWeChat {
             }
             const { msgList, contactList } = await this.getMsg();
 
-            console.log(msgList[0].Content, '\n=====================================')
-            msgFormatter(msgList[0], 'Content')
-            console.log(msgList[0].Content)
+            // console.log(msgList[0].Content, '\n=====================================')
+            // msgFormatter(msgList[0], 'Content')
+            // console.log(msgList[0].Content)
+
+            if (msgList[0] && msgList[0].ToUserName) {
+                await this.mssageIns.sendMsg(1, '1234567890', msgList[0].ToUserName)
+            }
+
 
         };
 

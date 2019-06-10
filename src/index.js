@@ -90,9 +90,9 @@ const processLoginInfo = async (resText) => {
     const buffer = new Buffer(res.body._buffer).toString();
     const { ret, skey, wxsid, wxuin, pass_ticket } = ((parser.parse(buffer)) || {}).error || {};
     if (ret === 0 && !!skey && !!wxsid && !!wxuin && !!pass_ticket) {
-        self.loginInfo.skey = self.BaseRequest.skey = skey;
-        self.loginInfo.wxsid = self.BaseRequest.wxsid = wxsid;
-        self.loginInfo.wxuin = self.BaseRequest.wxuin = wxuin;
+        self.loginInfo.skey = self.BaseRequest.Skey = skey;
+        self.loginInfo.wxsid = self.BaseRequest.Sid = wxsid;
+        self.loginInfo.wxuin = self.BaseRequest.Uin = wxuin;
         self.loginInfo.pass_ticket = pass_ticket;
         self.BaseRequest.DeviceID = self.loginInfo['deviceid'];
 
