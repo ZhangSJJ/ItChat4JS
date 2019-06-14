@@ -1,6 +1,6 @@
 {
-  "name": "nodewechat",
-  "version": "0.0.1",
+  "name": "itchatnode",
+  "version": "1.0.1",
   "description": "",
   "main": "./lib/index.js",
   "scripts": {
