@@ -1,7 +1,7 @@
 /**
  * @time 2019/5/27
  */
-'use strict';
+
 
 export class WhileDoing {
     constructor(doingFn, intervalTime = 1000) {

@@ -1,22 +1,23 @@
 {
   "name": "nodewechat",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "./lib/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "webpack --config webpack.config.js --mode development --watch"
+    "start": "webpack --config webpack.config.js --mode development --watch",
+    "build": "babel ./src/ --out-dir ./lib/"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@babel/cli": "^7.4.4",
     "@babel/core": "^7.4.4",
+    "@babel/plugin-transform-modules-commonjs": "^7.4.4",
     "@babel/plugin-transform-runtime": "^7.4.4",
-    "@babel/plugin-transform-strict-mode": "^7.2.0",
     "@babel/preset-env": "^7.4.4",
     "@babel/runtime": "^7.4.4",
     "babel-loader": "^8.0.6",
-    "babel-plugin-transform-remove-strict-mode": "0.0.2",
     "clean-webpack-plugin": "^2.0.2",
     "webpack": "^4.31.0",
     "webpack-cli": "^3.3.2"

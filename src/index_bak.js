@@ -8,7 +8,7 @@ import Fetch, { Fetch111, toJSON } from './Fetch';
 
 import { getUrlDomain, msgFormatter, WhileDoing } from './Utils';
 
-const qrCode = require('./qrcode-terminal/lib/main');
+const qrCode = require('./qrcode-terminal/index');
 import Cookies from './node-js-cookie';
 import ReturnValueFormat from './ReturnValueFormat';
 import { structFriendInfo } from "./ConvertData";

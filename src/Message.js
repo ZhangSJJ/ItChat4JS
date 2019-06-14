@@ -3,7 +3,7 @@
  */
 
 
-'use strict';
+
 import { getUrlDomain, msgFormatter } from "./Utils";
 import Fetch, { toJSON } from './Fetch';
 import ReturnValueFormat from "./ReturnValueFormat";

@@ -1,7 +1,7 @@
 /**
  * @time 2019/6/5
  */
-'use strict';
+
 
 import parser from 'fast-xml-parser';
 import { BASE_URL, APP_ID } from './Config';
@@ -9,7 +9,7 @@ import Fetch, { toJSON } from './Fetch';
 
 import { getUrlDomain, msgFormatter, WhileDoing } from './Utils';
 
-const qrCode = require('./qrcode-terminal/lib/main');
+const qrCode = require('./qrcode-terminal');
 import Cookies from './node-js-cookie';
 import ReturnValueFormat from './ReturnValueFormat';
 import { structFriendInfo } from "./ConvertData";

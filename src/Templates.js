@@ -1,7 +1,7 @@
 /**
  * @time 2019/6/4
  */
-'use strict';
+
 
 class Chatoom {
     constructor() {

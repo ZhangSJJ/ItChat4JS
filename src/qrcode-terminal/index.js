@@ -1,7 +1,8 @@
-var QRCode = require('./../vendor/QRCode'),
-    QRErrorCorrectLevel = require('./../vendor/QRCode/QRErrorCorrectLevel'),
-    black = "\033[40m  \033[0m",
-    white = "\033[47m  \033[0m",
+'use strict';
+var QRCode = require('./main'),
+    QRErrorCorrectLevel = require('./QRErrorCorrectLevel'),
+    black = "$__$033[40m  $__$033[0m",//"\033[40m  \033[0m"
+    white = "$__$033[47m  $__$033[0m",//"\033[47m  \033[0m" 由于babel严格模式不支持\符号，所有先用特殊符号代替，然后再通过插件替换
     toCell = function (isBlack) {
         return isBlack ? black : white;
     },
@@ -12,7 +13,7 @@ var QRCode = require('./../vendor/QRCode'),
             }
         };
     },
-    fill = function(length, value) {
+    fill = function (length, value) {
         var arr = new Array(length);
         for (var i = 0; i < length; i++) {
             arr[i] = value;
@@ -45,7 +46,7 @@ module.exports = {
                 moduleData.push(fill(moduleCount, WHITE));
             }
 
-            var platte= {
+            var platte = {
                 WHITE_ALL: '\u2588',
                 WHITE_BLACK: '\u2580',
                 BLACK_WHITE: '\u2584',
@@ -83,7 +84,7 @@ module.exports = {
             output += border + '\n';
             qrcode.modules.forEach(function (row) {
                 output += white;
-                output += row.map(toCell).join(''); 
+                output += row.map(toCell).join('');
                 output += white + '\n';
             });
             output += border;

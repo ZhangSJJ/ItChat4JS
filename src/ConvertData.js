@@ -3,7 +3,6 @@
  */
 
 
-'use strict';
 import { deepClone, isArray, isObject } from "./Utils";
 
 /**

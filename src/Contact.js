@@ -2,9 +2,6 @@
  * 联系人相关
  * @time 2019/5/30
  */
-
-
-'use strict';
 import { deepClone, getUrlDomain } from "./Utils";
 import Fetch from "./Fetch";
 import { updateInfoDict } from "./ConvertData";
