@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import querystring from 'querystring'
-import { USER_AGENT } from "./Config";
+import { USER_AGENT } from "./GlobalInfo";
 
 const Fetch = (url, options = {}) => {
     const { headers, method = 'GET', json, timeout, redirect = 'follow', ...restOptions } = options;

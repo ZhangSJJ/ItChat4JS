@@ -2,21 +2,21 @@
  * 联系人相关
  * @time 2019/5/30
  */
-import { deepClone, getUrlDomain } from "./Utils";
+import { deepClone, getUrlDomain, isArray } from "./Utils";
 import Fetch from "./Fetch";
 import { updateInfoDict } from "./ConvertData";
+import { LOGIN_INFO, BaseRequest } from './GlobalInfo';
 
 export default class Contact {
-    constructor(store) {
-        this.store = store;
-        this.chatroomList = [];//群列表
+    constructor() {
+        this.chatRoomList = [];//群列表
         this.memberList = [];//好友列表
-        this.mpList = [];
+        this.mpList = [];//订阅号以及公众号
     }
 
     async getContact(update = false) {
         if (!update) {
-            return deepClone(this.chatroomList);
+            return deepClone(this.chatRoomList);
         }
 
         let Seq = 0;
@@ -29,65 +29,89 @@ export default class Contact {
             }
         };
         await batchFetchContact()
-        const chatroomArr = [], otherList = [];
+        const chatRoomArr = [], otherList = [];
         this.memberList.forEach(item => {
             if (item.Sex !== 0) {
                 otherList.push(item)
             } else if (item.UserName.indexOf('@@') !== -1) {
-                chatroomArr.push(item)
+                chatRoomArr.push(item)
             } else if (item.UserName.indexOf('@') !== -1) {
                 otherList.push(item)
             }
         });
 
-        if (!!chatroomArr.length) {
-            this.updateLocalChatroom(chatroomArr)
+        if (!!chatRoomArr.length) {
+            this.updateLocalChatRoom(chatRoomArr)
         }
 
         if (!!otherList.length) {
             this.updateLocalFriends(otherList)
         }
 
-        return deepClone(chatroomArr);
+        return deepClone(chatRoomArr);
 
     }
 
+    getChatRoomInfo(chatRoomUserName) {
+        return this.chatRoomList.find(i => i.UserName === chatRoomUserName) || {}
+    }
+
+    async updateChatRoomInfo(userName) {
+        if (!isArray(userName)) {
+            userName = [userName];
+        }
+        const url = `${LOGIN_INFO.loginUrl}/webwxbatchgetcontact?type=ex&r=${Date.now()}`;
+        const params = {
+            method: 'POST',
+            BaseRequest,
+            Count: userName.length,
+            List: userName.map(i => ({ ChatRoomId: '', UserName: i })),
+            headers: {
+                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+            }
+        };
+
+        const res = await Fetch(url, params);
+        if (res.BaseResponse && res.BaseResponse.Ret === 0) {
+            this.updateLocalChatRoom(res.ContactList);
+        }
+    }
+
     async getContactList(seq = 0) {
-        const url = `${this.store.loginUrl}/webwxgetcontact?r=${Date.now()}&seq=${seq}&skey=${this.store.loginInfo['skey']}`;
+        const url = `${LOGIN_INFO.loginUrl}/webwxgetcontact?r=${Date.now()}&seq=${seq}&skey=${LOGIN_INFO['skey']}`;
         return Fetch(url, {
             headers: {
-                cookie: this.store.cookies.getAll(getUrlDomain(url))
+                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             },
         });
     }
 
-    updateLocalChatroom(roomList = []) {
-        roomList.forEach(chatroom => {
-            let oldChatroom = this.chatroomList.find(i => i.UserName === chatroom['UserName']);
-            //更新chatroom的信息（除了MemberList）
-            if (oldChatroom) {
-                updateInfoDict(oldChatroom, chatroom);
-                chatroom.MemberList = chatroom.MemberList || [];
-                oldChatroom.MemberList = oldChatroom.MemberList || [];
-                const memberList = chatroom.MemberList;
-                const oldMemberList = oldChatroom.MemberList;
-
-                //更新chatroom的MemberList中的每一个member信息
+    updateLocalChatRoom(roomList = []) {
+        roomList.forEach(chatRoom => {
+            let oldChatRoom = this.chatRoomList.find(i => i.UserName === chatRoom['UserName']);
+            //更新chatRoom的信息（除了MemberList）
+            if (oldChatRoom) {
+                updateInfoDict(oldChatRoom, chatRoom);
+                chatRoom.MemberList = chatRoom.MemberList || [];
+                oldChatRoom.MemberList = oldChatRoom.MemberList || [];
+                const memberList = chatRoom.MemberList;
+                const oldMemberList = oldChatRoom.MemberList;
+                //更新chatRoom的MemberList中的每一个member信息
                 memberList.forEach(member => {
-                    const oldMember = oldMemberList.find(i => i.UserName = member.UserName);
+                    const oldMember = oldMemberList.find(i => i.UserName === member.UserName);
                     if (oldMember) {
                         updateInfoDict(oldMember, member);
                     } else {
                         oldMemberList.push(member);
                     }
-                })
+                });
             } else {
-                this.chatroomList.push(chatroom);
-                oldChatroom = chatroom;
+                this.chatRoomList.push(chatRoom);
+                oldChatRoom = chatRoom;
             }
 
-            const memberList = chatroom.MemberList || [];
-            const oldMemberList = oldChatroom.MemberList || [];
+            const memberList = chatRoom.MemberList || [];
+            const oldMemberList = oldChatRoom.MemberList || [];
             //更新MemberList信息（删除某些不存在的member）
             if (!!memberList.length && memberList.length !== oldMemberList.length) {
                 const existsUserNames = (memberList).map(i => i.UserName);
@@ -96,20 +120,20 @@ export default class Contact {
                         item.isDelete = true;
                     }
                 });
-                oldChatroom.MemberList = oldMemberList.filter(i => !i.isDelete)
+                oldChatRoom.MemberList = oldMemberList.filter(i => !i.isDelete)
             }
             //update OwnerUin
-            if (oldChatroom.ChatRoomOwner && !!oldMemberList.length) {
-                const owner = oldMemberList.find(i => i.UserName === oldChatroom.ChatRoomOwner);
-                oldChatroom.OwnerUin = (owner || {}).Uin || 0;
+            if (oldChatRoom.ChatRoomOwner && !!oldMemberList.length) {
+                const owner = oldMemberList.find(i => i.UserName === oldChatRoom.ChatRoomOwner);
+                oldChatRoom.OwnerUin = (owner || {}).Uin || 0;
             }
             //update IsAdmin
-            if (!!oldChatroom.OwnerUin) {
-                oldChatroom.IsAdmin = oldChatroom.OwnerUin === this.store.loginInfo['wxuin']
+            if (!!oldChatRoom.OwnerUin) {
+                oldChatRoom.IsAdmin = oldChatRoom.OwnerUin === LOGIN_INFO['wxuin']
             }
             //update Self
-            const newSelf = oldMemberList.find(i => i.UserName === this.store.storageClass.userName);
-            oldChatroom['Self'] = newSelf || deepClone(this.store.loginInfo['User'])
+            const newSelf = oldMemberList.find(i => i.UserName === LOGIN_INFO.selfUserInfo.UserName);
+            oldChatRoom['Self'] = newSelf || deepClone(LOGIN_INFO['User'])
         });
 
         const Text = roomList.map(i => i.UserName);
@@ -117,15 +141,14 @@ export default class Contact {
             Type: 'System',
             Text,
             SystemInfo: 'chatrooms',
-            FromUserName: this.store.storageClass.userName,
-            ToUserName: this.store.storageClass.userName,
+            FromUserName: LOGIN_INFO.selfUserInfo.UserName,
+            ToUserName: LOGIN_INFO.selfUserInfo.UserName,
         }
     }
 
     updateLocalFriends(friendList = []) {
         const fullList = this.memberList.concat(this.mpList);
         friendList.forEach(friend => {
-
             let oldInfoDict = fullList.find(i => i.UserName === friend['UserName']);
             if (!oldInfoDict) {
                 oldInfoDict = deepClone(friend);
@@ -138,7 +161,5 @@ export default class Contact {
                 updateInfoDict(oldInfoDict, friend)
             }
         })
-
-
     }
 }

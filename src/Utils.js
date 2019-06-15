@@ -102,5 +102,13 @@ export const msgFormatter = (data, key) => {
     data[key] = unescape(data[key]);
 };
 
-
+export const convertRes = (res) => {
+    if (res && res.body && res.body._readableState && res.body._readableState.buffer &&
+        res.body._readableState.buffer.head && res.body._readableState.buffer.head.data) {
+        const buffer = new Buffer(res.body._readableState.buffer.head.data);
+        return buffer.toString();
+    } else {
+        return null;
+    }
+};
 

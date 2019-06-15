@@ -2,11 +2,12 @@
  * @time 2019/5/31
  */
 
-
-
+'use strict'
 import { getUrlDomain, msgFormatter } from "./Utils";
 import Fetch, { toJSON } from './Fetch';
 import ReturnValueFormat from "./ReturnValueFormat";
+import { EMIT_NAME, LOGIN_INFO } from './GlobalInfo';
+
 
 /**
  * 处理message
@@ -15,71 +16,72 @@ import ReturnValueFormat from "./ReturnValueFormat";
  */
 export default class Message {
     constructor(props) {
-        const { store, friendReplyInfo, groupReplyInfo } = props;
-        this.messageList = [];
-        this.store = store;
+        const { on, emit, getChatRoomInfo, updateChatRoomInfo } = props;
+        this.on = on;
+        this.emit = emit;
+        this.getChatRoomInfo = getChatRoomInfo;
+        this.updateChatRoomInfo = updateChatRoomInfo;
+
         this.typeArr = [40, 43, 50, 52, 53, 9999];
-        this.groupMsgList = [];
-        this.friendMsgList = [];
-        this.friendReplyInfo = friendReplyInfo;
-        this.groupReplyInfo = groupReplyInfo;
+
     }
 
-
     produceMsg(msgList = []) {
-        msgList.forEach(msg => {
+        msgList.forEach(async msg => {
             //  get actual opposite
-            if (msg.FromUserName === this.store.storageClass.userName) {
-                this.actualOpposite = msg.ToUserName;
+            if (msg.FromUserName === LOGIN_INFO.selfUserInfo.UserName) {
+                msg.actualOpposite = msg.ToUserName;
             } else {
-                this.actualOpposite = msg.FromUserName;
+                msg.actualOpposite = msg.FromUserName;
             }
 
+            let messageType = EMIT_NAME.FRIEND;
             // produce basic message
             if (msg.FromUserName.indexOf('@@') !== -1 || msg.ToUserName.indexOf('@@') !== -1) {
-                //todo
-                // produce_group_chat(core, m)
+                messageType = EMIT_NAME.CHAT_ROOM;
+                const reg = '(@[0-9a-z]*?):<br/>(.*)$';
+                const match = (msg.Content || '').match(reg);
+                const chatRoomUserName = msg['FromUserName'];
+                if (match) {
+                    const actualUserName = match[1];
+                    let chatRoom = this.getChatRoomInfo(chatRoomUserName);
+                    let member = (chatRoom.MemberList || []).find(i => i.UserName === actualUserName);
+                    if (!member) {
+                        await this.updateChatRoomInfo(chatRoomUserName);
+                        chatRoom = this.getChatRoomInfo(chatRoomUserName);
+                        member = (chatRoom.MemberList || []).find(i => i.UserName === actualUserName);
+                    }
+                    if (!member) {
+                        // logger.debug('chatroom member fetch failed with %s' % actualUserName);
+                        console.log('chatroom member fetch failed with %s' % actualUserName);
+                        msg['ActualNickName'] = '';
+                        msg['IsAt'] = false;
+                    } else {
+                        msg['ActualNickName'] = member['DisplayName'] || member['NickName'] || '';
+                        const chatRoomSelfUserInfo = chatRoom['Self'];
+                        const hasSpecialStr = msg.Content.indexOf('\u2005') !== -1;
+                        const atFlag = `@${chatRoomSelfUserInfo['DisplayName'] || LOGIN_INFO.selfUserInfo.NickName || ''}` + (hasSpecialStr ? '\u2005' : ' ');
+                        msg['IsAt'] = msg.Content.indexOf(atFlag) !== -1;
+                    }
+                    msg['ActualUserName'] = actualUserName;
+                    msgFormatter(msg, 'Content');
+                }
             } else {
-                msgFormatter(msg, 'Content')
-            }
+                msgFormatter(msg, 'Content');
 
+            }
+            this.reply(msg, messageType);
         });
     }
 
-    appendMsg(message) {
-        this.messageList.push(message);
-    }
-
-    startReplying() {
-
-    }
-
-    async sendMsg(msgType, content, toUserName) {
-        const url = `${this.store.loginUrl}/webwxsendmsg`;
-        const params = {
-            method: 'post',
-            BaseRequest: {
-                ...this.store.BaseRequest,
-                DeviceID: 'e' + ((Math.random() + '').substring(2, 17))
-            },
-            Msg: {
-                Type: msgType,
-                Content: content,
-                FromUserName: this.store.storageClass.userName,
-                ToUserName: toUserName || this.store.storageClass.userName,
-                LocalID: Date.now() * 1e4 + '',
-                ClientMsgId: Date.now() * 1e4 + '',
-            },
-            Scene: 0,
-            headers: {
-                cookie: this.store.cookies.getAll(getUrlDomain(url))
-            }
+    reply(msg, messageType) {
+        const messageFrom = msg.actualOpposite;
+        let retReply = {
+            type: 'Text',
+            text: msg['Content'],
+            isAt: msg['IsAt']
         };
-
-        console.log(JSON.stringify(params))
-        const res = await Fetch(url, params);
-        // const returnValue = new ReturnValueFormat(res);
-
-        console.log(res)
+        this.emit(messageType, retReply, messageFrom)
     }
+
 }

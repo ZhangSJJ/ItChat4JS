@@ -2,40 +2,45 @@
  * @time 2019/6/5
  */
 
-
+import EventEmitter from 'events';
 import parser from 'fast-xml-parser';
-import { BASE_URL, APP_ID } from './Config';
+
 import Fetch, { toJSON } from './Fetch';
 
-import { getUrlDomain, msgFormatter, WhileDoing } from './Utils';
+import { convertRes, getUrlDomain, msgFormatter, WhileDoing } from './Utils';
 
-const qrCode = require('./qrcode-terminal');
+import qrCode from './qrcode-terminal';
 import Cookies from './node-js-cookie';
 import ReturnValueFormat from './ReturnValueFormat';
 import { structFriendInfo } from "./ConvertData";
 import Contact from "./Contact";
-import { wrapUserDict } from "./Templates";
-import Message from './Message';
 
-export default class NodeWeChat {
-    constructor(props = {}) {
-        const { friendChatInfo, groupChatInfo, mpChatInfo } = props;
-        this.fridendChat = {};
-        this.groupChat = {};
-        this.mpChat = {};
+import Message from './Message';
+import GlobalInfo, { BaseRequest, LOGIN_INFO, APP_ID, BASE_URL, EMIT_NAME } from './GlobalInfo';
+
+export default class NodeWeChat extends EventEmitter {
+    constructor() {
+        super();
+        this.on = this.on.bind(this);
+        this.emit = this.emit.bind(this);
         this.init();
     }
 
     init() {
-        this.store = {
-            BaseRequest: {},
-            loginInfo: {},
-            storageClass: {},
-            memberList: [],
-        };
-        this.mssageIns = new Message({
-            store: this.store
+        this.contactIns = new Contact();
+        this.getChatRoomInfo = this.contactIns.getChatRoomInfo.bind(this.contactIns);
+        this.updateChatRoomInfo = this.contactIns.updateChatRoomInfo.bind(this.contactIns);
+
+
+
+        this.messageIns = new Message({
+            on: this.on,
+            emit: this.emit,
+            getChatRoomInfo: this.getChatRoomInfo,
+            updateChatRoomInfo: this.updateChatRoomInfo,
+
         });
+
     }
 
     async getUserId() {
@@ -81,10 +86,11 @@ export default class NodeWeChat {
         if (match) {
             const status = +match[1];
             if (status === 200) {
-                this.store.isLogin = true;
+                LOGIN_INFO.isLogin = true;
                 /***清除循环***/
                 this.loginWhileDoing.end();
                 /***清除循环***/
+                console.log('You are login!');
                 await this.processLoginInfo(bufferText)
             } else if (status === 201) {
                 console.log('Please press confirm on your phone.')
@@ -100,11 +106,11 @@ export default class NodeWeChat {
         const reg = 'window.redirect_uri="(\\S+)";';
         const match = resText.match(reg);
         const redirectUrl = match[1];
-        this.store.redirectUrl = redirectUrl;
-        this.store.loginUrl = redirectUrl.slice(0, redirectUrl.lastIndexOf('/'));
+        LOGIN_INFO.redirectUrl = redirectUrl;
+        LOGIN_INFO.loginUrl = redirectUrl.slice(0, redirectUrl.lastIndexOf('/'));
         const res = await Fetch(redirectUrl, { json: false, redirect: 'manual' });
         const cookieArr = (res.headers.raw() || {})['set-cookie'];
-        this.store.cookies = new Cookies(cookieArr);
+        LOGIN_INFO.cookies = new Cookies(cookieArr);
 
 
         const urlInfo = [["wx2.qq.com", ["file.wx2.qq.com", "webpush.wx2.qq.com"]],
@@ -114,33 +120,31 @@ export default class NodeWeChat {
             ["wechat.com", ["file.web.wechat.com", "webpush.web.wechat.com"]]
         ];
 
-        this.store.loginInfo['deviceid'] = 'e' + ((Math.random() + '').substring(2, 17));
-        this.store.loginInfo['logintime'] = Date.now();
+        LOGIN_INFO['deviceid'] = 'e' + ((Math.random() + '').substring(2, 17));
+        LOGIN_INFO['logintime'] = Date.now();
 
         urlInfo.forEach(([indexUrl, [fileUrl, syncUrl]]) => {
-            if (this.store.loginUrl.indexOf(indexUrl) !== -1) {
-                this.store.loginInfo['fileUrl'] = fileUrl;
-                this.store.loginInfo['syncUrl'] = syncUrl;
+            if (LOGIN_INFO.loginUrl.indexOf(indexUrl) !== -1) {
+                LOGIN_INFO['fileUrl'] = fileUrl;
+                LOGIN_INFO['syncUrl'] = syncUrl;
             } else {
-                this.store.loginInfo['fileUrl'] = this.store.loginInfo['syncUrl'] = this.store.loginUrl;
+                LOGIN_INFO['fileUrl'] = LOGIN_INFO['syncUrl'] = LOGIN_INFO.loginUrl;
             }
         });
 
         const buffer = new Buffer(res.body._buffer).toString();
         const { ret, skey, wxsid, wxuin, pass_ticket } = ((parser.parse(buffer)) || {}).error || {};
         if (ret === 0 && !!skey && !!wxsid && !!wxuin && !!pass_ticket) {
-            this.store.loginInfo.skey = this.store.BaseRequest.Skey = skey;
-            this.store.loginInfo.wxsid = this.store.BaseRequest.Sid = wxsid;
-            this.store.loginInfo.wxuin = this.store.BaseRequest.Uin = wxuin;
-            this.store.loginInfo.pass_ticket = pass_ticket;
-            this.store.BaseRequest.DeviceID = this.store.loginInfo['deviceid'];
-
-            this.store.contactIns = new Contact(this.store);
+            LOGIN_INFO.skey = BaseRequest.Skey = skey;
+            LOGIN_INFO.wxsid = BaseRequest.Sid = wxsid;
+            LOGIN_INFO.wxuin = BaseRequest.Uin = wxuin;
+            LOGIN_INFO.pass_ticket = pass_ticket;
+            BaseRequest.DeviceID = LOGIN_INFO['deviceid'];
 
             await this.webInit();
             await this.showMobileLogin();
 
-            await this.store.contactIns.getContact(true);
+            await this.contactIns.getContact(true);
             this.startReceiving();
         } else {
             console.log(`Your wechat account may be LIMITED to log in WEB wechat, error info:${buffer}`)
@@ -153,21 +157,11 @@ export default class NodeWeChat {
         const doingFn = async () => {
             const selector = await this.syncCheck();
             console.log('selector: ' + selector)
-            if (+selector === 0) {
+            if (selector === '0') {
                 return;
             }
             const { msgList, contactList } = await this.getMsg();
-
-            // console.log(msgList[0].Content, '\n=====================================')
-            // msgFormatter(msgList[0], 'Content')
-            // console.log(msgList[0].Content)
-
-            if (msgList[0] && msgList[0].Content) {
-                await this.mssageIns.sendMsg(1, msgList[0].Content, 'filehelper')
-
-            }
-
-
+            this.messageIns.produceMsg(msgList)
         };
 
         this.getMsgWhileDoing = new WhileDoing(doingFn, 3000);
@@ -177,60 +171,60 @@ export default class NodeWeChat {
     };
 
     async syncCheck() {
-        const url = `${this.store.loginInfo['syncUrl'] || this.store.loginUrl}/synccheck`;
+        const url = `${LOGIN_INFO['syncUrl'] || LOGIN_INFO.loginUrl}/synccheck`;
         const params = {
             r: Date.now(),
-            skey: this.store.loginInfo['skey'],
-            sid: this.store.loginInfo['wxsid'],
-            uin: this.store.loginInfo['wxuin'],
-            deviceid: this.store.loginInfo['deviceid'],
-            synckey: this.store.loginInfo.syncKeyStr,
-            _: this.store.loginInfo['logintime'],
+            skey: LOGIN_INFO['skey'],
+            sid: LOGIN_INFO['wxsid'],
+            uin: LOGIN_INFO['wxuin'],
+            deviceid: LOGIN_INFO['deviceid'],
+            synckey: LOGIN_INFO.syncKeyStr,
+            _: LOGIN_INFO['logintime'],
             json: false,
             headers: {
-                cookie: this.store.cookies.getAll(getUrlDomain(url))
+                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
 
-        this.store.loginInfo['logintime'] += 1;
+        LOGIN_INFO['logintime'] += 1;
 
         const res = await Fetch(url, params);
         const bufferText = convertRes(res);
 
         const reg = 'window.synccheck={retcode:"(\\d+)",selector:"(\\d+)"}';
         const match = bufferText.match(reg);
-        if (!match || +match[1] !== 0) {
-            throw new Error('Unexpected sync check result: ' + bufferText);
+        if (!match || match[1] !== '0') {
+            process.exit(0);
         }
         return match[2];
     };
 
     async getMsg() {
         console.log('getmsg')
-        const url = `${this.store.loginUrl}/webwxsync?sid=${this.store.loginInfo.wxsid}&skey=${this.store.loginInfo.skey}&pass_ticket=${this.store.loginInfo.pass_ticket}`;
+        const url = `${LOGIN_INFO.loginUrl}/webwxsync?sid=${LOGIN_INFO.wxsid}&skey=${LOGIN_INFO.skey}&pass_ticket=${LOGIN_INFO.pass_ticket}`;
         const params = {
-            BaseRequest: this.store.BaseRequest,
+            BaseRequest,
             method: 'post',
             json: false,//为了拿headers更新cookie
-            SyncKey: this.store.loginInfo.syncKey,
+            SyncKey: LOGIN_INFO.syncKey,
             rr: ~Date.now(),
             headers: {
-                cookie: this.store.cookies.getAll(getUrlDomain(url))
+                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
 
         let res = await Fetch(url, params);
         //更新cookie
         const cookieArr = (res.headers.raw() || {})['set-cookie'];
-        this.store.cookies.updateCookies(cookieArr);
+        LOGIN_INFO.cookies.updateCookies(cookieArr);
 
         res = await toJSON(res);
 
         if (res.BaseResponse.Ret !== 0) {
             return;
         }
-        this.store.loginInfo.syncKey = res.SyncKey;
-        this.store.loginInfo.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
+        LOGIN_INFO.syncKey = res.SyncKey;
+        LOGIN_INFO.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
 
         return {
             msgList: res.AddMsgList,
@@ -238,18 +232,45 @@ export default class NodeWeChat {
         }
     };
 
-
-    async showMobileLogin() {
-        const url = `${this.store.loginUrl}/webwxstatusnotify?lang=zh_CN&pass_ticket=${this.store.loginInfo.pass_ticket}`;
+    async sendMsg(msgType, content, toUserName) {
+        const url = `${LOGIN_INFO.loginUrl}/webwxsendmsg`;
         const params = {
             method: 'post',
-            BaseRequest: this.store.BaseRequest,
+            BaseRequest: {
+                ...BaseRequest,
+                DeviceID: 'e' + ((Math.random() + '').substring(2, 17))
+            },
+            Msg: {
+                Type: msgType,
+                Content: content,
+                FromUserName: LOGIN_INFO.selfUserInfo.UserName,
+                ToUserName: toUserName || LOGIN_INFO.selfUserInfo.UserName,
+                LocalID: Date.now() * 1e4 + '',
+                ClientMsgId: Date.now() * 1e4 + '',
+            },
+            Scene: 0,
+            headers: {
+                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+            }
+        };
+
+        const res = await Fetch(url, params);
+        // const returnValue = new ReturnValueFormat(res);
+
+        console.log(res)
+    }
+
+    async showMobileLogin() {
+        const url = `${LOGIN_INFO.loginUrl}/webwxstatusnotify?lang=zh_CN&pass_ticket=${LOGIN_INFO.pass_ticket}`;
+        const params = {
+            method: 'post',
+            BaseRequest,
             Code: 3,
-            FromUserName: this.store.storageClass.userName,
-            ToUserName: this.store.storageClass.userName,
+            FromUserName: LOGIN_INFO.selfUserInfo.UserName,
+            ToUserName: LOGIN_INFO.selfUserInfo.UserName,
             ClientMsgId: Date.now(),
             headers: {
-                cookie: this.store.cookies.getAll(getUrlDomain(url))
+                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
         const res = await Fetch(url, params);
@@ -260,44 +281,41 @@ export default class NodeWeChat {
 
     async webInit() {
         const now = Date.now();
-        let url = `${this.store.loginUrl}/webwxinit?r=${Math.floor(-now / 1579)}&lang=zh_CN&pass_ticket=${this.store.loginInfo.pass_ticket}`;
+        let url = `${LOGIN_INFO.loginUrl}/webwxinit?r=${Math.floor(-now / 1579)}&lang=zh_CN&pass_ticket=${LOGIN_INFO.pass_ticket}`;
         const params = {
-            BaseRequest: this.store.BaseRequest,
+            BaseRequest,
             method: 'post',
             headers: {
-                cookie: this.store.cookies.getAll(getUrlDomain(url))
+                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
         const res = await Fetch(url, params);
 
-        this.store.loginInfo.syncKey = res.SyncKey;
-        this.store.loginInfo.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
+        LOGIN_INFO.syncKey = res.SyncKey;
+        LOGIN_INFO.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
 
-        // utils.emoji_formatter(dic['User'], 'NickName')
-        this.store.loginInfo['InviteStartCount'] = res.InviteStartCount;
-        this.store.loginInfo['User'] = wrapUserDict(structFriendInfo(res.User)).getValue();
-        this.store.contactIns.memberList.push(this.store.loginInfo['User']);
 
-        this.store.storageClass.userName = res.User.UserName;
-        this.store.storageClass.nickName = res.User.NickName;
-
+        LOGIN_INFO['InviteStartCount'] = res.InviteStartCount;
+        LOGIN_INFO.selfUserInfo = structFriendInfo(res.User);
+        // this.contactIns.memberList.push(LOGIN_INFO.selfUserInfo);
 
         // # deal with contact list returned when init
 
         const contactList = res.ContactList || [],
-            chatroomList = [], otherList = [];
+            chatRoomList = [], otherList = [];
 
         contactList.forEach(item => {
             if (item.Sex !== 0) {
                 otherList.push(item)
             } else if (item.UserName.indexOf('@@') !== -1) {
-                item.MemberList = []; // don't let dirty info pollute the list
-                chatroomList.push(item)
+                item.MemberList = [];
+                chatRoomList.push(item)
             } else if (item.UserName.indexOf('@') !== -1) {
-                // # mp will be dealt in update_local_friends as well
                 otherList.push(item)
             }
         });
+        this.contactIns.updateLocalChatRoom(chatRoomList);
+        this.contactIns.updateLocalFriends(otherList);
 
     };
 
@@ -312,12 +330,28 @@ export default class NodeWeChat {
     }
 }
 
-const convertRes = (res) => {
-    if (res && res.body && res.body._readableState && res.body._readableState.buffer &&
-        res.body._readableState.buffer.head && res.body._readableState.buffer.head.data) {
-        const buffer = new Buffer(res.body._readableState.buffer.head.data);
-        return buffer.toString();
-    } else {
-        return null;
+NodeWeChat.MESSAGE_TYPE = EMIT_NAME;
+
+const NodeWeChatIns = new NodeWeChat();
+NodeWeChatIns.run();
+NodeWeChatIns.on(NodeWeChat.MESSAGE_TYPE.FRIEND, (replayInfo, toUserName) => {
+    console.log('friend', '====================')
+    console.log(replayInfo, toUserName)
+    const { text } = replayInfo
+    if (text === 'zsj') {
+        NodeWeChatIns.sendMsg(1, 'zsssssssj', toUserName)
     }
-};
+
+});
+
+NodeWeChatIns.on(NodeWeChat.MESSAGE_TYPE.CHAT_ROOM, (replayInfo, toUserName) => {
+    console.log('charroom', '====================')
+    console.log(replayInfo, toUserName)
+
+    const { text } = replayInfo
+    if (text === 'zsj') {
+        NodeWeChatIns.sendMsg(1, 'zsssssssj', toUserName)
+    }
+
+});
+
