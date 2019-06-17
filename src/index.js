@@ -32,7 +32,6 @@ export default class NodeWeChat extends EventEmitter {
         this.updateChatRoomInfo = this.contactIns.updateChatRoomInfo.bind(this.contactIns);
 
 
-
         this.messageIns = new Message({
             on: this.on,
             emit: this.emit,
@@ -331,27 +330,4 @@ export default class NodeWeChat extends EventEmitter {
 }
 
 NodeWeChat.MESSAGE_TYPE = EMIT_NAME;
-
-const NodeWeChatIns = new NodeWeChat();
-NodeWeChatIns.run();
-NodeWeChatIns.on(NodeWeChat.MESSAGE_TYPE.FRIEND, (replayInfo, toUserName) => {
-    console.log('friend', '====================')
-    console.log(replayInfo, toUserName)
-    const { text } = replayInfo
-    if (text === 'zsj') {
-        NodeWeChatIns.sendMsg(1, 'zsssssssj', toUserName)
-    }
-
-});
-
-NodeWeChatIns.on(NodeWeChat.MESSAGE_TYPE.CHAT_ROOM, (replayInfo, toUserName) => {
-    console.log('charroom', '====================')
-    console.log(replayInfo, toUserName)
-
-    const { text } = replayInfo
-    if (text === 'zsj') {
-        NodeWeChatIns.sendMsg(1, 'zsssssssj', toUserName)
-    }
-
-});
 
