@@ -1,6 +1,6 @@
 {
   "name": "itchatnode",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "",
   "main": "./lib/index.js",
   "scripts": {
@@ -10,7 +10,6 @@
   },
   "author": "",
   "license": "ISC",
-
   "dependencies": {
     "fast-xml-parser": "^3.12.16",
     "node-fetch": "^2.6.0",
