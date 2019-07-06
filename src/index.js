@@ -16,7 +16,8 @@ import { structFriendInfo } from "./ConvertData";
 import Contact from "./Contact";
 
 import Message from './Message';
-import GlobalInfo, { BaseRequest, LOGIN_INFO, APP_ID, BASE_URL, EMIT_NAME } from './GlobalInfo';
+import GlobalInfo, { EMIT_NAME } from './GlobalInfo';
+import { readAndMergeGlobalInfo, saveGlobalInfo } from "./StoreGlobalInfo";
 
 export default class NodeWeChat extends EventEmitter {
     constructor() {
@@ -43,8 +44,8 @@ export default class NodeWeChat extends EventEmitter {
     }
 
     async getUserId() {
-        const url = BASE_URL + `/jslogin`;
-        const res = await Fetch(url, { appid: APP_ID, json: false });
+        const url = GlobalInfo.BASE_URL + `/jslogin`;
+        const res = await Fetch(url, { appid: GlobalInfo.APP_ID, json: false });
         const bufferText = convertRes(res);
         if (bufferText) {
             const reg = 'window.QRLogin.code = (\\d+); window.QRLogin.uuid = "(\\S+?)";';
@@ -67,7 +68,7 @@ export default class NodeWeChat extends EventEmitter {
 
     async checkUserLogin(userId) {
         const now = Date.now();
-        const url = `${BASE_URL}/cgi-bin/mmwebwx-bin/login`;
+        const url = `${GlobalInfo.BASE_URL}/cgi-bin/mmwebwx-bin/login`;
         const params = {
             loginicon: true,
             uuid: userId,
@@ -85,7 +86,7 @@ export default class NodeWeChat extends EventEmitter {
         if (match) {
             const status = +match[1];
             if (status === 200) {
-                LOGIN_INFO.isLogin = true;
+                GlobalInfo.LOGIN_INFO.isLogin = true;
                 /***清除循环***/
                 this.loginWhileDoing.end();
                 /***清除循环***/
@@ -93,6 +94,8 @@ export default class NodeWeChat extends EventEmitter {
                 await this.processLoginInfo(bufferText)
             } else if (status === 201) {
                 console.log('Please press confirm on your phone.')
+            } else {
+                console.log(status, 'Please wait for a moment...')
             }
         } else {
             throw new Error('获取登录信息失败！')
@@ -105,11 +108,11 @@ export default class NodeWeChat extends EventEmitter {
         const reg = 'window.redirect_uri="(\\S+)";';
         const match = resText.match(reg);
         const redirectUrl = match[1];
-        LOGIN_INFO.redirectUrl = redirectUrl;
-        LOGIN_INFO.loginUrl = redirectUrl.slice(0, redirectUrl.lastIndexOf('/'));
+        GlobalInfo.LOGIN_INFO.redirectUrl = redirectUrl;
+        GlobalInfo.LOGIN_INFO.loginUrl = redirectUrl.slice(0, redirectUrl.lastIndexOf('/'));
         const res = await Fetch(redirectUrl, { json: false, redirect: 'manual' });
         const cookieArr = (res.headers.raw() || {})['set-cookie'];
-        LOGIN_INFO.cookies = new Cookies(cookieArr);
+        GlobalInfo.LOGIN_INFO.cookies = new Cookies(cookieArr);
 
 
         const urlInfo = [["wx2.qq.com", ["file.wx2.qq.com", "webpush.wx2.qq.com"]],
@@ -119,31 +122,33 @@ export default class NodeWeChat extends EventEmitter {
             ["wechat.com", ["file.web.wechat.com", "webpush.web.wechat.com"]]
         ];
 
-        LOGIN_INFO['deviceid'] = 'e' + ((Math.random() + '').substring(2, 17));
-        LOGIN_INFO['logintime'] = Date.now();
+        GlobalInfo.LOGIN_INFO['deviceid'] = 'e' + ((Math.random() + '').substring(2, 17));
+        GlobalInfo.LOGIN_INFO['logintime'] = Date.now();
 
         urlInfo.forEach(([indexUrl, [fileUrl, syncUrl]]) => {
-            if (LOGIN_INFO.loginUrl.indexOf(indexUrl) !== -1) {
-                LOGIN_INFO['fileUrl'] = fileUrl;
-                LOGIN_INFO['syncUrl'] = syncUrl;
+            if (GlobalInfo.LOGIN_INFO.loginUrl.indexOf(indexUrl) !== -1) {
+                GlobalInfo.LOGIN_INFO['fileUrl'] = fileUrl;
+                GlobalInfo.LOGIN_INFO['syncUrl'] = syncUrl;
             } else {
-                LOGIN_INFO['fileUrl'] = LOGIN_INFO['syncUrl'] = LOGIN_INFO.loginUrl;
+                GlobalInfo.LOGIN_INFO['fileUrl'] = GlobalInfo.LOGIN_INFO['syncUrl'] = GlobalInfo.LOGIN_INFO.loginUrl;
             }
         });
 
         const buffer = new Buffer(res.body._buffer).toString();
         const { ret, skey, wxsid, wxuin, pass_ticket } = ((parser.parse(buffer)) || {}).error || {};
         if (ret === 0 && !!skey && !!wxsid && !!wxuin && !!pass_ticket) {
-            LOGIN_INFO.skey = BaseRequest.Skey = skey;
-            LOGIN_INFO.wxsid = BaseRequest.Sid = wxsid;
-            LOGIN_INFO.wxuin = BaseRequest.Uin = wxuin;
-            LOGIN_INFO.pass_ticket = pass_ticket;
-            BaseRequest.DeviceID = LOGIN_INFO['deviceid'];
+            GlobalInfo.LOGIN_INFO.skey = GlobalInfo.BaseRequest.Skey = skey;
+            GlobalInfo.LOGIN_INFO.wxsid = GlobalInfo.BaseRequest.Sid = wxsid;
+            GlobalInfo.LOGIN_INFO.wxuin = GlobalInfo.BaseRequest.Uin = wxuin;
+            GlobalInfo.LOGIN_INFO.pass_ticket = pass_ticket;
+            GlobalInfo.BaseRequest.DeviceID = GlobalInfo.LOGIN_INFO['deviceid'];
 
             await this.webInit();
-            await this.showMobileLogin();
-
             await this.contactIns.getContact(true);
+
+            //登录态存储
+            saveGlobalInfo();
+
             this.startReceiving();
         } else {
             console.log(`Your wechat account may be LIMITED to log in WEB wechat, error info:${buffer}`)
@@ -170,22 +175,22 @@ export default class NodeWeChat extends EventEmitter {
     };
 
     async syncCheck() {
-        const url = `${LOGIN_INFO['syncUrl'] || LOGIN_INFO.loginUrl}/synccheck`;
+        const url = `${GlobalInfo.LOGIN_INFO['syncUrl'] || GlobalInfo.LOGIN_INFO.loginUrl}/synccheck`;
         const params = {
             r: Date.now(),
-            skey: LOGIN_INFO['skey'],
-            sid: LOGIN_INFO['wxsid'],
-            uin: LOGIN_INFO['wxuin'],
-            deviceid: LOGIN_INFO['deviceid'],
-            synckey: LOGIN_INFO.syncKeyStr,
-            _: LOGIN_INFO['logintime'],
+            skey: GlobalInfo.LOGIN_INFO['skey'],
+            sid: GlobalInfo.LOGIN_INFO['wxsid'],
+            uin: GlobalInfo.LOGIN_INFO['wxuin'],
+            deviceid: GlobalInfo.LOGIN_INFO['deviceid'],
+            synckey: GlobalInfo.LOGIN_INFO.syncKeyStr,
+            _: GlobalInfo.LOGIN_INFO['logintime'],
             json: false,
             headers: {
-                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
 
-        LOGIN_INFO['logintime'] += 1;
+        GlobalInfo.LOGIN_INFO['logintime'] += 1;
 
         const res = await Fetch(url, params);
         const bufferText = convertRes(res);
@@ -200,30 +205,30 @@ export default class NodeWeChat extends EventEmitter {
 
     async getMsg() {
         console.log('getmsg')
-        const url = `${LOGIN_INFO.loginUrl}/webwxsync?sid=${LOGIN_INFO.wxsid}&skey=${LOGIN_INFO.skey}&pass_ticket=${LOGIN_INFO.pass_ticket}`;
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsync?sid=${GlobalInfo.LOGIN_INFO.wxsid}&skey=${GlobalInfo.LOGIN_INFO.skey}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
-            BaseRequest,
+            BaseRequest: GlobalInfo.BaseRequest,
             method: 'post',
             json: false,//为了拿headers更新cookie
-            SyncKey: LOGIN_INFO.syncKey,
+            SyncKey: GlobalInfo.LOGIN_INFO.syncKey,
             rr: ~Date.now(),
             headers: {
-                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
 
         let res = await Fetch(url, params);
         //更新cookie
         const cookieArr = (res.headers.raw() || {})['set-cookie'];
-        LOGIN_INFO.cookies.updateCookies(cookieArr);
+        GlobalInfo.LOGIN_INFO.cookies.updateCookies(cookieArr);
 
         res = await toJSON(res);
 
         if (res.BaseResponse.Ret !== 0) {
             return;
         }
-        LOGIN_INFO.syncKey = res.SyncKey;
-        LOGIN_INFO.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
+        GlobalInfo.LOGIN_INFO.syncKey = res.SyncKey;
+        GlobalInfo.LOGIN_INFO.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
 
         return {
             msgList: res.AddMsgList,
@@ -232,24 +237,24 @@ export default class NodeWeChat extends EventEmitter {
     };
 
     async sendMsg(msgType, content, toUserName) {
-        const url = `${LOGIN_INFO.loginUrl}/webwxsendmsg`;
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendmsg`;
         const params = {
             method: 'post',
             BaseRequest: {
-                ...BaseRequest,
+                ...GlobalInfo.BaseRequest,
                 DeviceID: 'e' + ((Math.random() + '').substring(2, 17))
             },
             Msg: {
                 Type: msgType,
                 Content: content,
-                FromUserName: LOGIN_INFO.selfUserInfo.UserName,
-                ToUserName: toUserName || LOGIN_INFO.selfUserInfo.UserName,
+                FromUserName: GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
+                ToUserName: toUserName || GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
                 LocalID: Date.now() * 1e4 + '',
                 ClientMsgId: Date.now() * 1e4 + '',
             },
             Scene: 0,
             headers: {
-                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
 
@@ -260,43 +265,47 @@ export default class NodeWeChat extends EventEmitter {
     }
 
     async showMobileLogin() {
-        const url = `${LOGIN_INFO.loginUrl}/webwxstatusnotify?lang=zh_CN&pass_ticket=${LOGIN_INFO.pass_ticket}`;
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxstatusnotify?lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+
+        if (!GlobalInfo.LOGIN_INFO.cookies || !GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))) {
+            return false;
+        }
+
         const params = {
             method: 'post',
-            BaseRequest,
+            BaseRequest: GlobalInfo.BaseRequest,
             Code: 3,
-            FromUserName: LOGIN_INFO.selfUserInfo.UserName,
-            ToUserName: LOGIN_INFO.selfUserInfo.UserName,
+            FromUserName: GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
+            ToUserName: GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
             ClientMsgId: Date.now(),
             headers: {
-                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
         const res = await Fetch(url, params);
-        const returnValue = new ReturnValueFormat(res);
-        // console.log(returnValue.value())
-
+        const formatRes = new ReturnValueFormat(res);
+        return formatRes.value().BaseResponse && formatRes.value().BaseResponse.Ret === 0;
     };
 
     async webInit() {
         const now = Date.now();
-        let url = `${LOGIN_INFO.loginUrl}/webwxinit?r=${Math.floor(-now / 1579)}&lang=zh_CN&pass_ticket=${LOGIN_INFO.pass_ticket}`;
+        let url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxinit?r=${Math.floor(-now / 1579)}&lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
-            BaseRequest,
+            BaseRequest: GlobalInfo.BaseRequest,
             method: 'post',
             headers: {
-                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
         const res = await Fetch(url, params);
 
-        LOGIN_INFO.syncKey = res.SyncKey;
-        LOGIN_INFO.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
+        GlobalInfo.LOGIN_INFO.syncKey = res.SyncKey;
+        GlobalInfo.LOGIN_INFO.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
 
 
-        LOGIN_INFO['InviteStartCount'] = res.InviteStartCount;
-        LOGIN_INFO.selfUserInfo = structFriendInfo(res.User);
-        // this.contactIns.memberList.push(LOGIN_INFO.selfUserInfo);
+        GlobalInfo.LOGIN_INFO['InviteStartCount'] = res.InviteStartCount;
+        GlobalInfo.LOGIN_INFO.selfUserInfo = structFriendInfo(res.User);
+        // this.contactIns.memberList.push(GlobalInfo.LOGIN_INFO.selfUserInfo);
 
         // # deal with contact list returned when init
 
@@ -319,13 +328,19 @@ export default class NodeWeChat extends EventEmitter {
     };
 
     async run() {
-        const userId = await this.getUserId();
-        this.drawQRImage(userId);
+        await readAndMergeGlobalInfo();
+        const isLogin = await this.showMobileLogin();
+        if (isLogin) {
+            this.startReceiving();
+        } else {
+            const userId = await this.getUserId();
+            this.drawQRImage(userId);
 
-        this.loginWhileDoing = new WhileDoing(async () => {
-            await this.checkUserLogin(userId);
-        });
-        this.loginWhileDoing.start();
+            this.loginWhileDoing = new WhileDoing(async () => {
+                await this.checkUserLogin(userId);
+            });
+            this.loginWhileDoing.start();
+        }
     }
 }
 

@@ -5,7 +5,7 @@
 import { deepClone, getUrlDomain, isArray } from "./Utils";
 import Fetch from "./Fetch";
 import { updateInfoDict } from "./ConvertData";
-import { LOGIN_INFO, BaseRequest } from './GlobalInfo';
+import GlobalInfo from './GlobalInfo';
 
 export default class Contact {
     constructor() {
@@ -60,14 +60,14 @@ export default class Contact {
         if (!isArray(userName)) {
             userName = [userName];
         }
-        const url = `${LOGIN_INFO.loginUrl}/webwxbatchgetcontact?type=ex&r=${Date.now()}`;
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxbatchgetcontact?type=ex&r=${Date.now()}`;
         const params = {
             method: 'POST',
-            BaseRequest,
+            BaseRequest: GlobalInfo.BaseRequest,
             Count: userName.length,
             List: userName.map(i => ({ ChatRoomId: '', UserName: i })),
             headers: {
-                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
 
@@ -78,10 +78,10 @@ export default class Contact {
     }
 
     async getContactList(seq = 0) {
-        const url = `${LOGIN_INFO.loginUrl}/webwxgetcontact?r=${Date.now()}&seq=${seq}&skey=${LOGIN_INFO['skey']}`;
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetcontact?r=${Date.now()}&seq=${seq}&skey=${GlobalInfo.LOGIN_INFO['skey']}`;
         return Fetch(url, {
             headers: {
-                cookie: LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             },
         });
     }
@@ -129,11 +129,11 @@ export default class Contact {
             }
             //update IsAdmin
             if (!!oldChatRoom.OwnerUin) {
-                oldChatRoom.IsAdmin = oldChatRoom.OwnerUin === LOGIN_INFO['wxuin']
+                oldChatRoom.IsAdmin = oldChatRoom.OwnerUin === GlobalInfo.LOGIN_INFO['wxuin']
             }
             //update Self
-            const newSelf = oldMemberList.find(i => i.UserName === LOGIN_INFO.selfUserInfo.UserName);
-            oldChatRoom['Self'] = newSelf || deepClone(LOGIN_INFO['User'])
+            const newSelf = oldMemberList.find(i => i.UserName === GlobalInfo.LOGIN_INFO.selfUserInfo.UserName);
+            oldChatRoom['Self'] = newSelf || deepClone(GlobalInfo.LOGIN_INFO['User'])
         });
 
         const Text = roomList.map(i => i.UserName);
@@ -141,8 +141,8 @@ export default class Contact {
             Type: 'System',
             Text,
             SystemInfo: 'chatrooms',
-            FromUserName: LOGIN_INFO.selfUserInfo.UserName,
-            ToUserName: LOGIN_INFO.selfUserInfo.UserName,
+            FromUserName: GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
+            ToUserName: GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
         }
     }
 

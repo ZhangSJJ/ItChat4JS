@@ -63,6 +63,7 @@ class Cookie {
 
 export default class Cookies {
     constructor(cookieArr = []) {
+        this.cookieArr = cookieArr;
         this.cookies = {};
         cookieArr.forEach(str => {
             const cookie = new Cookie(str);

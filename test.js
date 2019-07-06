@@ -1,5 +1,4 @@
 /**
- * @author shangjiezhang@ctrip.com
  * @time 2019/6/15
  */
 'use strict';
