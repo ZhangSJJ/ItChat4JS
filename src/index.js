@@ -16,7 +16,7 @@ import { structFriendInfo } from "./ConvertData";
 import Contact from "./Contact";
 
 import Message from './Message';
-import GlobalInfo, { EMIT_NAME } from './GlobalInfo';
+import GlobalInfo from './GlobalInfo';
 import { readAndMergeGlobalInfo, saveGlobalInfo } from "./StoreGlobalInfo";
 
 export default class NodeWeChat extends EventEmitter {
@@ -31,6 +31,8 @@ export default class NodeWeChat extends EventEmitter {
         this.contactIns = new Contact();
         this.getChatRoomInfo = this.contactIns.getChatRoomInfo.bind(this.contactIns);
         this.updateChatRoomInfo = this.contactIns.updateChatRoomInfo.bind(this.contactIns);
+        this.getFriendInfo = this.contactIns.getFriendInfo.bind(this.contactIns);
+        this.getMpInfo = this.contactIns.getMpInfo.bind(this.contactIns);
 
 
         this.messageIns = new Message({
@@ -38,7 +40,8 @@ export default class NodeWeChat extends EventEmitter {
             emit: this.emit,
             getChatRoomInfo: this.getChatRoomInfo,
             updateChatRoomInfo: this.updateChatRoomInfo,
-
+            getFriendInfo: this.getFriendInfo,
+            getMpInfo: this.getMpInfo,
         });
 
     }
@@ -95,7 +98,7 @@ export default class NodeWeChat extends EventEmitter {
             } else if (status === 201) {
                 console.log('Please press confirm on your phone.')
             } else {
-                console.log(status, 'Please wait for a moment...')
+                console.log('Please wait for a moment...')
             }
         } else {
             throw new Error('获取登录信息失败！')
@@ -344,5 +347,5 @@ export default class NodeWeChat extends EventEmitter {
     }
 }
 
-NodeWeChat.MESSAGE_TYPE = EMIT_NAME;
+NodeWeChat.MESSAGE_TYPE = GlobalInfo.EMIT_NAME;
 

@@ -3,7 +3,7 @@ import querystring from 'querystring'
 import { USER_AGENT } from "./GlobalInfo";
 
 const Fetch = (url, options = {}) => {
-    const { headers, method = 'GET', json, timeout, redirect = 'follow', ...restOptions } = options;
+    const { headers, method = 'GET', json = true, buffer = false, timeout, redirect = 'follow', ...restOptions } = options;
     const methodUpCase = method.toUpperCase();
 
     let finalOptions = {
@@ -30,12 +30,11 @@ const Fetch = (url, options = {}) => {
 
     let fetchData = fetch(url, finalOptions);
 
-    /**
-     * 拓展字段，如果手动设置 options.json 为 false
-     * 不自动 JSON.parse
-     */
-    if (json !== false) {
+
+    if (json) {
         fetchData = fetchData.then(toJSON)
+    } else if (buffer) {
+        fetchData = fetchData.then(toBuffer)
     }
 
     /**
@@ -64,5 +63,13 @@ export function toJSON(response) {
     return response.json();
 }
 
+
+export function toBuffer(response) {
+    // 如果 response 状态异常，抛出错误
+    if (!response.ok || response.status !== 200) {
+        return Promise.reject(new Error(response.statusText));
+    }
+    return response.buffer();
+}
 
 export default Fetch;

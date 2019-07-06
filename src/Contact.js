@@ -56,6 +56,14 @@ export default class Contact {
         return this.chatRoomList.find(i => i.UserName === chatRoomUserName) || {}
     }
 
+    getFriendInfo(userName) {
+        return this.memberList.find(i => i.UserName === userName) || {}
+    }
+
+    getMpInfo(userName) {
+        return this.mpList.find(i => i.UserName === userName) || {}
+    }
+
     async updateChatRoomInfo(userName) {
         if (!isArray(userName)) {
             userName = [userName];
