@@ -10,7 +10,7 @@
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
+  "peerDependencies": {
     "fast-xml-parser": "^3.12.16",
     "node-fetch": "^2.6.0",
     "querystring": "^0.2.0",

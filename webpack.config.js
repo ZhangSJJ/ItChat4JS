@@ -35,7 +35,7 @@ module.exports = {
     devtool: "source-map",
     target: "node",
     entry: {
-        index: './test1.js',
+        index: './test.js',
     },
     output: {
         filename: '[name].js',
