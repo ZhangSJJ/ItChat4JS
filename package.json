@@ -8,12 +8,15 @@
     "start": "webpack --config webpack.config.js --mode development --watch",
     "build": "babel ./src/ --out-dir ./lib/"
   },
-  "author": "",
+  "author": "Kobe Zhang",
   "license": "ISC",
   "peerDependencies": {
     "fast-xml-parser": "^3.12.16",
+    "log4js": "^4.4.0",
     "node-fetch": "^2.6.0",
-    "querystring": "^0.2.0",
+    "querystring": "^0.2.0"
+  },
+  "devDependencies": {
     "@babel/cli": "^7.4.4",
     "@babel/core": "^7.4.4",
     "@babel/plugin-transform-modules-commonjs": "^7.4.4",

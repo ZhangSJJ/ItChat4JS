@@ -7,7 +7,7 @@ import parser from 'fast-xml-parser';
 
 import Fetch, { toJSON } from './Fetch';
 
-import { convertRes, getUrlDomain, msgFormatter, WhileDoing } from './Utils';
+import { convertRes, getUrlDomain, WhileDoing } from './Utils';
 
 import qrCode from './qrcode-terminal';
 import Cookies from './node-js-cookie';

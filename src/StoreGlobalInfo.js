@@ -6,23 +6,24 @@
 import fs from 'fs';
 import GlobalInfo from './GlobalInfo';
 import Cookies from "./node-js-cookie";
+import { LogDebug } from './Log';
 
 export const saveGlobalInfo = () => {
     const stream = fs.createWriteStream('hot_login_config.js', { encoding: 'utf8' });
     stream.on('error', err => {
-        console.log('发生异常:', err);
+        LogDebug('发生异常:' + err);
     });
 
     stream.on('open', fd => {
-        console.log('文件已打开:', fd);
+        LogDebug('文件已打开:', fd);
     });
 
     stream.on('finish', () => {
-        console.log('写入已完成..');
+        LogDebug('写入已完成..');
     });
 
     stream.on('close', () => {
-        console.log('文件已关闭！');
+        LogDebug('文件已关闭！');
     });
 
     stream.write(JSON.stringify(GlobalInfo));
@@ -44,6 +45,7 @@ const readGlobalInfo = () => {
                 resolve(text);
             });
             stream.on('err', err => {
+                LogDebug('发生异常:' + err);
                 resolve(null);
             });
         }
