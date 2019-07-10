@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import querystring from 'querystring'
-import { USER_AGENT } from "./GlobalInfo";
+import GlobalInfo from "./GlobalInfo";
 
 const Fetch = (url, options = {}) => {
     const { headers, method = 'GET', json = true, buffer = false, timeout, redirect = 'follow', ...restOptions } = options;
@@ -11,7 +11,7 @@ const Fetch = (url, options = {}) => {
         method: methodUpCase,
         credentials: 'include',
         headers: {
-            'User-Agent': USER_AGENT,
+            'User-Agent': GlobalInfo.USER_AGENT,
             'Content-Type': 'application/json;charset=UTF-8',
             ...headers
         },
@@ -66,7 +66,8 @@ export function toJSON(response) {
 
 export function toBuffer(response) {
     // 如果 response 状态异常，抛出错误
-    if (!response.ok || response.status !== 200) {
+    //附件，图片，音频下载status=200,视频下载：206（header中加入了range）
+    if (!response.ok || (response.status !== 200 && response.status !== 206)) {
         return Promise.reject(new Error(response.statusText));
     }
     return response.buffer();

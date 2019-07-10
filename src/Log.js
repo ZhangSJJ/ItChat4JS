@@ -8,14 +8,15 @@ import log4js from 'log4js';
 const createLog = (level) => {
     const logger = log4js.getLogger(`NodeWeChat-${level.toUpperCase()}`);
     logger.level = level;
-    const isProduction = process.env.NODE_ENV === 'production';
-    return isProduction ? () => {
-    } : logger[level].bind(logger);
+
+    return logger[level].bind(logger);
 };
 
+const isProduction = process.env.NODE_ENV === 'production';
 
 export const LogTrace = createLog('trace');
-export const LogDebug = createLog('debug');
+export const LogDebug = isProduction ? () => {
+} : createLog('debug');
 export const LogInfo = createLog('info');
 export const LogWarn = createLog('warn');
 export const LogError = createLog('error');

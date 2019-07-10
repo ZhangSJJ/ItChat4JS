@@ -5,11 +5,12 @@
 
 'use strict'
 import fs from 'fs';
-import { convertDate, getUrlDomain, msgFormatter } from "./Utils";
+import { convertDate, convertRes, getUrlDomain, msgFormatter } from "./Utils";
 import Fetch, { toJSON } from './Fetch';
 import ReturnValueFormat from "./ReturnValueFormat";
 import GlobalInfo from './GlobalInfo';
 import { structFriendInfo } from "./ConvertData";
+import { LogDebug, LogError } from "./Log";
 
 
 /**
@@ -27,12 +28,12 @@ export default class Message {
         this.getFriendInfo = getFriendInfo;
         this.getMpInfo = getMpInfo;
 
-        this.typeArr = [40, 43, 50, 52, 53, 9999];
+        this.uselessMsgType = [40, 43, 50, 52, 53, 9999];
 
     }
 
     async produceGroupMsg(msg) {
-        const reg = '(@[0-9a-z]*?):<br/>(.*)$';
+        const reg = /(@[0-9a-z]*?):<br\/>(.*)$/;
         const match = (msg.Content || '').match(reg);
         let chatRoomUserName = msg['FromUserName'];
         let actualUserName = '';
@@ -79,149 +80,195 @@ export default class Message {
 
     produceMsg(msgList = []) {
         msgList.forEach(async msg => {
-            // get actual opposite
-            if (msg.FromUserName === GlobalInfo.LOGIN_INFO.selfUserInfo.UserName) {
-                msg.actualOpposite = msg.ToUserName;
-            } else {
-                msg.actualOpposite = msg.FromUserName;
-            }
-
-            let messageType = GlobalInfo.EMIT_NAME.FRIEND;
-            // produce basic message
-            if (msg.FromUserName.indexOf('@@') !== -1 || msg.ToUserName.indexOf('@@') !== -1) {
-                messageType = GlobalInfo.EMIT_NAME.CHAT_ROOM;
-                await this.produceGroupMsg(msg)
-            } else {
-                msgFormatter(msg, 'Content');
-            }
-
-            // set user of msg
-            if (msg.actualOpposite.indexOf('@@') !== -1 || ['filehelper', 'fmessage'].indexOf(msg.actualOpposite) !== -1) {
-                //群聊或者文件助手
-                msg['User'] = this.getChatRoomInfo(msg.actualOpposite) || structFriendInfo({ 'UserName': msg.actualOpposite });
-            } else {
-                //订阅号以及公众号
-                msg['User'] = this.getMpInfo(msg.actualOpposite) || this.getFriendInfo(msg.actualOpposite) || structFriendInfo({ 'UserName': msg.actualOpposite });
-            }
-
-            // 处理消息
-            let msgInfo = {};
-            if (msg['MsgType'] === 1) {// 可能为地图或者文本
-                if (!!msg['Url']) {
-                    const reg = /.+?\(.+?\)/;
-                    let data = 'Map';
-                    const match = (msg.Content || '').match(reg);
-                    if (match) {
-                        data = match[0]
-                    }
-                    msgInfo = {
-                        Type: 'Map',
-                        Text: data,
-                    }
+                // get actual opposite
+                if (msg.FromUserName === GlobalInfo.LOGIN_INFO.selfUserInfo.UserName) {
+                    msg.actualOpposite = msg.ToUserName;
                 } else {
+                    msg.actualOpposite = msg.FromUserName;
+                }
+
+                let messageType = GlobalInfo.EMIT_NAME.FRIEND;
+                // produce basic message
+                if (msg.FromUserName.indexOf('@@') !== -1 || msg.ToUserName.indexOf('@@') !== -1) {
+                    messageType = GlobalInfo.EMIT_NAME.CHAT_ROOM;
+                    await this.produceGroupMsg(msg)
+                } else {
+                    msgFormatter(msg, 'Content');
+                }
+
+                // set user of msg
+                if (msg.actualOpposite.indexOf('@@') !== -1 || ['filehelper', 'fmessage'].indexOf(msg.actualOpposite) !== -1) {
+                    //群聊或者文件助手
+                    msg['User'] = this.getChatRoomInfo(msg.actualOpposite) || structFriendInfo({ 'UserName': msg.actualOpposite });
+                } else {
+                    //订阅号以及公众号
+                    msg['User'] = this.getMpInfo(msg.actualOpposite) || this.getFriendInfo(msg.actualOpposite) || structFriendInfo({ 'UserName': msg.actualOpposite });
+                }
+
+                // 处理消息
+                let msgInfo = {};
+                if (msg['MsgType'] === 1) {// 可能为地图或者文本
+                    if (!!msg['Url']) {
+                        const reg = /(.+?\(.+?\))/;
+                        let data = 'Map';
+                        const match = (msg.Content || '').match(reg);
+                        if (match && match[1]) {
+                            data = match[1]
+                        }
+                        msgInfo = {
+                            Type: 'Map',
+                            Text: data,
+                        };
+                        LogDebug('Map...');
+                    } else {
+                        msgInfo = {
+                            Type: 'Text',
+                            Text: msg['Content']
+                        };
+                        LogDebug('Text...');
+                    }
+                } else if (msg['MsgType'] === 3 || msg['MsgType'] === 47) {//picture
+                    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetmsgimg`;
+                    const filename = convertDate().replace(/-|:|\s/g, '') + (msg['MsgType'] === 3 ? '.png' : '.gif');
+                    const downloadFileFn = downloadFile(url, msg['MsgId'], filename);
                     msgInfo = {
-                        Type: 'Text',
-                        Text: msg['Content']
+                        Type: 'Picture',
+                        FileName: filename,
+                        Text: downloadFileFn,
+                    };
+                    LogDebug('Picture...111');//todo .gif download failed
+                } else if (msg['MsgType'] === 34) {//voice
+                    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetvoice`;
+                    const filename = convertDate().replace(/-|:|\s/g, '') + '.mp3';
+                    const downloadFileFn = downloadFile(url, msg['MsgId'], filename);
+                    msgInfo = {
+                        Type: 'Recording',
+                        FileName: filename,
+                        Text: downloadFileFn,
+                    };
+                    LogDebug('Voice...');
+                } else if (msg['MsgType'] === 37) {//friends
+                    msg['User']['UserName'] = msg['RecommendInfo']['UserName'];
+                    msgInfo = {
+                        Type: 'Friends',
+                        Text: {
+                            status: msg['Status'],
+                            userName: msg['RecommendInfo']['UserName'],
+                            verifyContent: msg['Ticket'],
+                            autoUpdate: msg['RecommendInfo'],
+                        },
+                    };
+                    msg['User'].verifyDict = msgInfo['Text'];
+                    LogDebug('Add Friend Apply...');
+                } else if (msg['MsgType'] === 42) {//name card
+                    msgInfo = {
+                        Type: 'Card',
+                        Text: msg['RecommendInfo']
+                    };
+                    LogDebug('Name Card...');
+                } else if ([43, 62].indexOf(msg['MsgType']) !== -1) {//tiny video
+                    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetvideo`;
+                    const filename = convertDate().replace(/-|:|\s/g, '') + '.mp4';
+                    const downloadFileFn = downloadFile(url, msg['MsgId'], filename, true);
+
+                    msgInfo = {
+                        Type: 'Video',
+                        FileName: filename,
+                        Text: downloadFileFn,
+                    };
+
+                    LogDebug('Video...');
+                } else if (msg['MsgType'] === 49) {//sharing
+                    if (msg['AppMsgType'] === 0) {//chat history
+                        msgInfo = {
+                            Type: 'Note',
+                            Text: msg['Content']
+                        };
+                        LogDebug('Chat History...')
+                    } else if (msg['AppMsgType'] === 6) {
+                        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetmedia`;
+                        const filename = msg.FileName || convertDate().replace(/-|:|\s/g, '');
+                        const downloadFileFn = downloadAttachment(url, msg, filename);
+                        msgInfo = {
+                            Type: 'Attachment',
+                            FileName: filename,
+                            Text: downloadFileFn,
+                        };
+                        LogDebug('Attachment...')
+                    } else if (msg['AppMsgType'] === 8) {
+                        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetmsgimg`;
+                        const filename = convertDate().replace(/-|:|\s/g, '') + '.gif';
+                        const downloadFileFn = downloadFile(url, msg['MsgId'], filename);
+                        msgInfo = {
+                            Type: 'Picture',
+                            FileName: filename,
+                            Text: downloadFileFn,
+                        };
+
+                        LogDebug('Picture...222');
+                    } else if (msg['AppMsgType'] === 17) {
+                        msgInfo = {
+                            Type: 'Note',
+                            FileName: msg['FileName'],
+                        };
+                        LogDebug('Note...');
+                    } else if (msg['AppMsgType'] === 2000) {
+                        const reg = '\[CDATA\[(.+?)\][\s\S]+?\[CDATA\[(.+?)\]';
+                        const match = (msg.Content || '').match(reg);
+                        let text = 'You may found detailed info in Content key.';
+                        if (match && match[2]) {
+                            text = match[2].split('\u3002')[0]
+                        }
+
+                        msgInfo = {
+                            Type: 'Note',
+                            Text: text,
+                        };
+                        LogDebug('Note...');
+                    } else {
+                        msgInfo = {
+                            Type: 'Sharing',
+                            Text: msg['FileName'],
+                        }
                     }
-                }
-            } else if (msg['MsgType'] === 3 || msg['MsgType'] === 47) {//picture
-                const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetmsgimg`;
-                const filename = convertDate().replace(/-|:|\s/g, '') + (msg['MsgType'] === 3 ? '.png' : '.gif');
-                const downloadFileFn = downloadFile(url, msg['MsgId'], filename);
-                msgInfo = {
-                    Type: 'Picture',
-                    FileName: filename,
-                    Text: downloadFileFn,
-                };
-            } else if (msg['MsgType'] === 34) {//voice
-                const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetvoice`;
-                const filename = convertDate().replace(/-|:|\s/g, '') + '.mp3';
-                const downloadFileFn = downloadFile(url, msg['MsgId'], filename);
-                msgInfo = {
-                    Type: 'Recording',
-                    FileName: filename,
-                    Text: downloadFileFn,
-                };
-            } else if (msg['MsgType'] === 37) {//friends
-                msg['User']['UserName'] = msg['RecommendInfo']['UserName'];
-                msgInfo = {
-                    Type: 'Friends',
-                    Text: {
-                        status: msg['Status'],
-                        userName: msg['RecommendInfo']['UserName'],
-                        verifyContent: msg['Ticket'],
-                        autoUpdate: msg['RecommendInfo'],
-                    },
-                };
-                msg['User'].verifyDict = msgInfo['Text']
-            } else if (msg['MsgType'] === 42) {//name card
-                msgInfo = {
-                    Type: 'Card',
-                    Text: msg['RecommendInfo']
-                }
-            } else if ([43, 62].indexOf(msg['MsgType']) !== -1) {//tiny video
-                const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetvideo`;
-                const filename = convertDate().replace(/-|:|\s/g, '') + '.mp4';
+                } else if (msg['MsgType'] === 51) {//phone init
 
-                const params = {
-                    // msgid: msg['MsgId'],
-                    // skey: GlobalInfo.LOGIN_INFO['skey'],
-                    json: false,
-                    // buffer: true,
-                    headers: {
-                        cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url)),
-                        'Range': 'bytes=0-'
-                    }
-                };
-
-                // Fetch('https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxgetvideo?msgid=6285823730356002963', params).then(fileData => {
-                //     const wstream = fs.createWriteStream('qqq');
-                //
-                //     wstream.on('open', () => {
-                //         const blockSize = 128;
-                //         const nbBlocks = Math.ceil(fileData.length / (blockSize));
-                //         for (let i = 0; i < nbBlocks; i += 1) {
-                //             const currentBlock = fileData.slice(
-                //                 blockSize * i,
-                //                 Math.min(blockSize * (i + 1), fileData.length),
-                //             );
-                //             wstream.write(currentBlock);
-                //         }
-                //
-                //         wstream.end();
-                //     });
-                //     wstream.on('error', (err) => { console.log('eeeeeeeeeeeeeeeeerrrrrrrrr',err) });
-                //     wstream.on('finish', () => { console.log('finish') });
-                //
-                //     console.log(fileData)
-                // });
-                //todo
-
-
-                msgInfo = {
-                    Type: 'Video',
-                    FileName: filename,
-                    // Text: downloadFileFn,
-                };
-
-
-            } else if (msg['MsgType'] === 49) {//sharing
-                if (msg['AppMsgType'] === 0) {//chat history
+                } else if (msg['MsgType'] === 10000) {
                     msgInfo = {
                         Type: 'Note',
-                        Text: msg['Content']
+                        Text: msg['Content'],
                     }
-                } else if (msg['AppMsgType'] === 6) {
+                } else if (msg['MsgType'] === 10002) {
+                    const reg = '\[CDATA\[(.+?)\]\]';
+                    const match = (msg.Content || '').match(reg);
+                    let text = 'System message';
+                    if (match && match[1]) {
+                        text = match[1].replace('\\', '')
+                    }
+                    msgInfo = {
+                        Type: 'Note',
+                        Text: text,
+                    };
 
+                } else if (this.uselessMsgType.indexOf(msg['MsgType']) !== -1) {
+                    msgInfo = {
+                        Type: 'Useless',
+                        Text: 'UselessMsg',
+                    };
+
+                } else {
+                    LogDebug(`Useless message received:${msg['MsgType']}\n${JSON.stringify(msg)}`);
+                    msgInfo = {
+                        Type: 'Useless',
+                        Text: 'UselessMsg',
+                    };
                 }
+            
+                msg = { ...msg, ...msgInfo };
 
-
+                this.reply(msg, messageType);
             }
-
-
-            console.log(msgInfo)
-            this.reply(msg, messageType);
-        });
+        );
     }
 
     reply(msg, messageType) {
@@ -248,13 +295,57 @@ export default class Message {
  * @param url
  * @param msgId
  * @param filename
- * @returns {function()}
+ * @param isVideo
+ * @returns {function(*=)}
  */
-const downloadFile = (url, msgId, filename) => {
-    return () => {
+
+const downloadFile = (url, msgId, filename, isVideo = false) => {
+    return (path) => {
+        path = path || '';
         const params = {
             msgid: msgId,
             skey: GlobalInfo.LOGIN_INFO['skey'],
+            json: false,
+            buffer: true,
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url)),
+            }
+        };
+        params.headers['Content-Type'] = 'application/octet-stream';
+        if (isVideo) {
+            params.headers['Range'] = 'bytes=0-';
+        }
+        path && !fs.existsSync(path) && fs.mkdirSync(path);
+
+        return new Promise(resolve => {
+            Fetch(url, params).then(data => {
+                fs.writeFile(path + filename, data, function (err) {
+                    if (err) {
+                        LogError('File Download Error:' + err);
+                        resolve('File Download Error!')
+                    } else {
+                        resolve('File Download Success!')
+                    }
+                });
+            });
+        });
+    }
+};
+
+
+const downloadAttachment = (url, msg, filename) => {
+    return (path) => {
+        path = path || '';
+
+        const webwxDataTicket = GlobalInfo.LOGIN_INFO.cookies.getValue('webwx_data_ticket', getUrlDomain(url));
+
+        const params = {
+            sender: msg['FromUserName'],
+            mediaid: msg['MediaId'],
+            filename: msg['FileName'],
+            fromuser: GlobalInfo.LOGIN_INFO['wxuin'],
+            pass_ticket: 'undefined',
+            webwx_data_ticket: webwxDataTicket,
             json: false,
             buffer: true,
             headers: {
@@ -263,10 +354,13 @@ const downloadFile = (url, msgId, filename) => {
             }
         };
 
+        path && !fs.existsSync(path) && fs.mkdirSync(path);
+
         return new Promise(resolve => {
             Fetch(url, params).then(data => {
-                fs.writeFile(filename, data, function (err) {
+                fs.writeFile(path + filename, data, function (err) {
                     if (err) {
+                        LogError('File Download Error:' + err);
                         resolve('File Download Error!')
                     } else {
                         resolve('File Download Success!')
@@ -274,8 +368,5 @@ const downloadFile = (url, msgId, filename) => {
                 });
             });
         });
-
-
     }
-
 };

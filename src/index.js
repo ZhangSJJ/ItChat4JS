@@ -18,6 +18,7 @@ import Contact from "./Contact";
 import Message from './Message';
 import GlobalInfo from './GlobalInfo';
 import { readAndMergeGlobalInfo, saveGlobalInfo } from "./StoreGlobalInfo";
+import { LogDebug } from "./Log";
 
 export default class NodeWeChat extends EventEmitter {
     constructor() {
@@ -51,7 +52,7 @@ export default class NodeWeChat extends EventEmitter {
         const res = await Fetch(url, { appid: GlobalInfo.APP_ID, json: false });
         const bufferText = convertRes(res);
         if (bufferText) {
-            const reg = 'window.QRLogin.code = (\\d+); window.QRLogin.uuid = "(\\S+?)";';
+            const reg = /window.QRLogin.code = (\d+); window.QRLogin.uuid = "(\S+?)";/;
             const match = bufferText.match(reg);
             if (match && +match[1] === 200) {
                 return match[2];
@@ -83,7 +84,7 @@ export default class NodeWeChat extends EventEmitter {
         const res = await Fetch(url, params);
         const bufferText = convertRes(res);
 
-        const reg = 'window.code=(\\d+);';
+        const reg = /window.code=(\d+);/;
         const match = bufferText.match(reg);
 
         if (match) {
@@ -108,7 +109,7 @@ export default class NodeWeChat extends EventEmitter {
     };
 
     async processLoginInfo(resText) {
-        const reg = 'window.redirect_uri="(\\S+)";';
+        const reg = /window.redirect_uri="(\S+)";/;
         const match = resText.match(reg);
         const redirectUrl = match[1];
         GlobalInfo.LOGIN_INFO.redirectUrl = redirectUrl;
@@ -163,7 +164,7 @@ export default class NodeWeChat extends EventEmitter {
 
         const doingFn = async () => {
             const selector = await this.syncCheck();
-            console.log('selector: ' + selector)
+            LogDebug('selector: ' + selector);
             if (selector === '0') {
                 return;
             }
@@ -198,7 +199,7 @@ export default class NodeWeChat extends EventEmitter {
         const res = await Fetch(url, params);
         const bufferText = convertRes(res);
 
-        const reg = 'window.synccheck={retcode:"(\\d+)",selector:"(\\d+)"}';
+        const reg = /window.synccheck={retcode:"(\d+)",selector:"(\d+)"}/;
         const match = bufferText.match(reg);
         if (!match || match[1] !== '0') {
             process.exit(0);
@@ -207,7 +208,7 @@ export default class NodeWeChat extends EventEmitter {
     };
 
     async getMsg() {
-        console.log('getmsg')
+        LogDebug('Getting Message...');
         const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsync?sid=${GlobalInfo.LOGIN_INFO.wxsid}&skey=${GlobalInfo.LOGIN_INFO.skey}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             BaseRequest: GlobalInfo.BaseRequest,

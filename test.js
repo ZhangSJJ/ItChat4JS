@@ -3,7 +3,8 @@
  */
 'use strict';
 
-const NodeWeChat = require('./lib/index');
+import NodeWeChat from './src';
+
 const NodeWeChatIns = new NodeWeChat();
 NodeWeChatIns.run();
 NodeWeChatIns.on(NodeWeChat.MESSAGE_TYPE.FRIEND, (replayInfo, toUserName) => {
@@ -16,7 +17,7 @@ NodeWeChatIns.on(NodeWeChat.MESSAGE_TYPE.FRIEND, (replayInfo, toUserName) => {
 
 });
 
-NodeWeChatIns.on(NodeWeChat.MESSAGE_TYPE.CHAT_ROOM, (replayInfo, toUserName) => {
+NodeWeChatIns.on(NodeWeChat.MESSAGE_TYPE.CHAT_ROOM, async (replayInfo, toUserName) => {
     console.log('charroom', '====================')
     console.log(replayInfo, toUserName)
 
