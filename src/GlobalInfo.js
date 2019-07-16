@@ -38,7 +38,21 @@ const LOGIN_INFO = {
 const EMIT_NAME = {
     FRIEND: 'FRIEND',
     CHAT_ROOM: 'CHAT_ROOM',
-    OTHER: 'OTHER'
+    MASSIVE_PLATFORM: 'MASSIVE_PLATFORM'
+};
+const MESSAGE_TYPE = {
+    TEXT: 'Text',
+    MAP: 'Map',
+    CARD: 'Card',
+    NOTE: 'Note',
+    SHARING: 'Sharing',
+    PICTURE: 'Picture',
+    RECORDING: 'Recording',
+    VOICE: 'Recording',
+    ATTACHMENT: 'Attachment',
+    VIDEO: 'Video',
+    FRIENDS: 'Friends',
+    SYSTEM: 'System',
 };
 
 export default {
@@ -49,5 +63,6 @@ export default {
     USER_AGENT,
     BaseRequest,
     LOGIN_INFO,
-    EMIT_NAME
+    EMIT_NAME,
+    MESSAGE_TYPE
 };

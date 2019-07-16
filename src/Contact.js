@@ -4,8 +4,9 @@
  */
 import { deepClone, getUrlDomain, isArray } from "./Utils";
 import Fetch from "./Fetch";
-import { updateInfoDict } from "./ConvertData";
+import { structFriendInfo, updateInfoDict } from "./ConvertData";
 import GlobalInfo from './GlobalInfo';
+import { LogDebug } from "./Log";
 
 export default class Contact {
     constructor() {
@@ -15,6 +16,9 @@ export default class Contact {
     }
 
     async getContact(update = false) {
+
+        let tempMemberList = [];
+
         if (!update) {
             return deepClone(this.chatRoomList);
         }
@@ -23,14 +27,14 @@ export default class Contact {
         const batchFetchContact = async () => {
             const res = await this.getContactList(Seq);
             const { MemberList } = res;
-            this.memberList = this.memberList.concat(MemberList || []);
+            tempMemberList = tempMemberList.concat(MemberList || []);
             if (res.Seq !== 0) {
                 await batchFetchContact();
             }
         };
         await batchFetchContact()
         const chatRoomArr = [], otherList = [];
-        this.memberList.forEach(item => {
+        tempMemberList.forEach(item => {
             if (item.Sex !== 0) {
                 otherList.push(item)
             } else if (item.UserName.indexOf('@@') !== -1) {
@@ -53,15 +57,23 @@ export default class Contact {
     }
 
     getChatRoomInfo(chatRoomUserName) {
-        return this.chatRoomList.find(i => i.UserName === chatRoomUserName) || {}
+        return this.chatRoomList.find(i => i.UserName === chatRoomUserName);
     }
 
     getFriendInfo(userName) {
-        return this.memberList.find(i => i.UserName === userName) || {}
+        return this.memberList.find(i => i.UserName === userName);
     }
 
     getMpInfo(userName) {
-        return this.mpList.find(i => i.UserName === userName) || {}
+        return this.mpList.find(i => i.UserName === userName);
+    }
+
+    /**
+     * 在所有的list中查找成员
+     */
+    getUseInfo(userName) {
+        const fullContact = this.chatRoomList.concat(this.memberList).concat(this.mpList);
+        return fullContact.find(i => i.UserName === userName);
     }
 
     async updateChatRoomInfo(userName) {
@@ -82,6 +94,27 @@ export default class Contact {
         const res = await Fetch(url, params);
         if (res.BaseResponse && res.BaseResponse.Ret === 0) {
             this.updateLocalChatRoom(res.ContactList);
+        }
+    }
+
+    async updateFriendInfo(userName) {
+        if (!isArray(userName)) {
+            userName = [userName];
+        }
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxbatchgetcontact?type=ex&r=${Date.now()}`;
+        const params = {
+            method: 'POST',
+            BaseRequest: GlobalInfo.BaseRequest,
+            Count: userName.length,
+            List: userName.map(i => ({ EncryChatRoomId: '', UserName: i })),
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+            }
+        };
+
+        const res = await Fetch(url, params);
+        if (res.BaseResponse && res.BaseResponse.Ret === 0) {
+            this.updateLocalFriends(res.ContactList);
         }
     }
 
@@ -114,6 +147,7 @@ export default class Contact {
                     }
                 });
             } else {
+                chatRoom.myDefinedUserType = GlobalInfo.EMIT_NAME.CHAT_ROOM;
                 this.chatRoomList.push(chatRoom);
                 oldChatRoom = chatRoom;
             }
@@ -141,7 +175,7 @@ export default class Contact {
             }
             //update Self
             const newSelf = oldMemberList.find(i => i.UserName === GlobalInfo.LOGIN_INFO.selfUserInfo.UserName);
-            oldChatRoom['Self'] = newSelf || deepClone(GlobalInfo.LOGIN_INFO['User'])
+            oldChatRoom['Self'] = newSelf || deepClone(GlobalInfo.LOGIN_INFO.selfUserInfo)
         });
 
         const Text = roomList.map(i => i.UserName);
@@ -160,14 +194,87 @@ export default class Contact {
             let oldInfoDict = fullList.find(i => i.UserName === friend['UserName']);
             if (!oldInfoDict) {
                 oldInfoDict = deepClone(friend);
-                if (oldInfoDict['VerifyFlag'] & 8 === 0) {
+                if ((oldInfoDict['VerifyFlag'] & 8) === 0) {
+                    oldInfoDict.myDefinedUserType = GlobalInfo.EMIT_NAME.FRIEND;
                     this.memberList.push(oldInfoDict)
                 } else {
+                    oldInfoDict.myDefinedUserType = GlobalInfo.EMIT_NAME.MASSIVE_PLATFORM;
                     this.mpList.push(oldInfoDict)
                 }
             } else {
                 updateInfoDict(oldInfoDict, friend)
             }
         })
+    }
+
+    updateLocalUin(msg) {
+        const usernameChangedList = [];
+        let ret = {
+            'Type': 'System',
+            'Text': usernameChangedList,
+            'SystemInfo': 'uins',
+        };
+        msg = msg || { Content: '' };
+        const reg = '<username>([^<]*?)<';
+        const match = msg['Content'].match(reg);
+        if (match && match[1]) {
+            const uins = match[1].split(',');
+            const usernames = msg['StatusNotifyUserName'].split(',');
+            if (!!uins.length && !!usernames.length && uins.length === usernames.length) {
+                uins.forEach(async (uin, index) => {
+                    const username = usernames[index];
+                    if (username.indexOf('@') === -1) {
+                        return;
+                    }
+                    const userInfo = this.getUseInfo(username);
+                    if (userInfo) {
+                        if ((userInfo['Uin'] || 0) === 0) {
+                            userInfo['Uin'] = uin;
+                            usernameChangedList.push(username);
+                            LogDebug('Uin fetched: ' + username + ', ' + uin);
+                        } else if (userInfo['Uin'] !== uin) {
+                            LogDebug('Uin changed: ' + userInfo['Uin'] + ', ' + uin);
+                        }
+                    } else {
+                        if (username.indexOf('@@') !== -1) {
+                            await updateChatRoomInfo(username);
+                            let newChatRoomInfo = this.getChatRoomInfo(username);
+                            if (!newChatRoomInfo) {
+                                newChatRoomInfo = structFriendInfo({
+                                    'UserName': username,
+                                    'Uin': uin,
+                                    'Self': deepClone(GlobalInfo.LOGIN_INFO.selfUserInfo)
+                                });
+                                this.chatRoomList.push(newChatRoomInfo)
+                            } else {
+                                newChatRoomInfo['Uin'] = uin
+                            }
+                        } else if (username.indexOf('@') !== -1) {
+                            await this.updateFriendInfo(username)
+                            let newFriendInfo = this.getFriendInfo(username);
+                            if (!newFriendInfo) {
+                                newFriendInfo.structFriendInfo({
+                                    'UserName': username,
+                                    'Uin': uin,
+                                });
+                                this.memberList.push(newFriendInfo);
+                            } else {
+                                newFriendInfo['Uin'] = uin;
+                            }
+
+                        }
+                        usernameChangedList.push(username);
+                        LogDebug('Uin fetched: ' + username + ',  ' + uin)
+                    }
+                })
+            } else {
+                LogDebug('Wrong length of uins & usernames: ' + uins.length + ',' + usernames.length);
+            }
+        } else {
+            LogDebug('No uins in 51 message');
+            LogDebug(msg['Content'])
+        }
+
+        return ret;
     }
 }

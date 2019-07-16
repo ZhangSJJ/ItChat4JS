@@ -52,7 +52,7 @@ export const wrapUserDict = (user) => {
     if (userName.indexOf('@@')) {
         //todo
         // ret = Chatroom(user)
-    } else if ((user.VerifyFlag || 8) & 8 === 0) {
+    } else if (((user.VerifyFlag || 8) & 8) === 0) {
         ret = new User(user)
     }
 

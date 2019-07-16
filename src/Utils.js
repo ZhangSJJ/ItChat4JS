@@ -112,15 +112,13 @@ export const convertRes = (res) => {
     }
 };
 
+/**
+ * 将时间转换为 yyyy-MM-dd HH:mm:ss 格式的字符串
+ * @param date
+ * @returns {string}
+ */
 export const convertDate = (date) => {
     date = date || new Date();
-    let year = date.getFullYear(), month = date.getMonth() + 1, day = date.getDate(), h = date.getHours(),
-        m = date.getMinutes(), s = date.getSeconds();
-    month = month < 10 ? '0' + month : month;
-    day = day < 10 ? '0' + day : day;
-    h = h < 10 ? '0' + h : h;
-    m = m < 10 ? '0' + m : m;
-    s = s < 10 ? '0' + s : s;
-    return year + '-' + month + '-' + day + ' ' + h + ':' + m + ':' + s;
+    return [date.getFullYear(), '-', ('00' + (date.getMonth() + 1)).slice(-2), '-', ('00' + date.getDate()).slice(-2), ' ', ('00' + date.getHours()).slice(-2), ':', ('00' + date.getMinutes()).slice(-2), ':', ('00' + date.getSeconds()).slice(-2)].join('')
 };
 

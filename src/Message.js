@@ -20,13 +20,14 @@ import { LogDebug, LogError } from "./Log";
  */
 export default class Message {
     constructor(props) {
-        const { on, emit, getChatRoomInfo, updateChatRoomInfo, getFriendInfo, getMpInfo } = props;
+        const { on, emit, getChatRoomInfo, updateChatRoomInfo, getFriendInfo, getMpInfo, updateLocalUin } = props;
         this.on = on;
         this.emit = emit;
         this.getChatRoomInfo = getChatRoomInfo;
         this.updateChatRoomInfo = updateChatRoomInfo;
         this.getFriendInfo = getFriendInfo;
         this.getMpInfo = getMpInfo;
+        this.updateLocalUin = updateLocalUin;
 
         this.uselessMsgType = [40, 43, 50, 52, 53, 9999];
 
@@ -54,16 +55,15 @@ export default class Message {
         }
 
 
-        let chatRoom = this.getChatRoomInfo(chatRoomUserName);
+        let chatRoom = this.getChatRoomInfo(chatRoomUserName) || {};
         let member = (chatRoom.MemberList || []).find(i => i.UserName === actualUserName);
         if (!member) {
             await this.updateChatRoomInfo(chatRoomUserName);
-            chatRoom = this.getChatRoomInfo(chatRoomUserName);
+            chatRoom = this.getChatRoomInfo(chatRoomUserName) || {};
             member = (chatRoom.MemberList || []).find(i => i.UserName === actualUserName);
         }
         if (!member) {
-            // logger.debug('chatroom member fetch failed with %s' % actualUserName);
-            console.log('chatroom member fetch failed with %s' % actualUserName);
+            LogDebug('Chat Room Member Fetch Failed With ' + actualUserName);
             msg['ActualNickName'] = '';
             msg['IsAt'] = false;
         } else {
@@ -87,22 +87,26 @@ export default class Message {
                     msg.actualOpposite = msg.FromUserName;
                 }
 
-                let messageType = GlobalInfo.EMIT_NAME.FRIEND;
                 // produce basic message
                 if (msg.FromUserName.indexOf('@@') !== -1 || msg.ToUserName.indexOf('@@') !== -1) {
-                    messageType = GlobalInfo.EMIT_NAME.CHAT_ROOM;
                     await this.produceGroupMsg(msg)
                 } else {
                     msgFormatter(msg, 'Content');
                 }
 
                 // set user of msg
-                if (msg.actualOpposite.indexOf('@@') !== -1 || ['filehelper', 'fmessage'].indexOf(msg.actualOpposite) !== -1) {
+                const defaultUseInfo = structFriendInfo({ 'UserName': msg.actualOpposite });
+                if (msg.actualOpposite.indexOf('@@') !== -1) {
                     //群聊或者文件助手
-                    msg['User'] = this.getChatRoomInfo(msg.actualOpposite) || structFriendInfo({ 'UserName': msg.actualOpposite });
+                    defaultUseInfo.myDefinedUserType = GlobalInfo.EMIT_NAME.CHAT_ROOM;
+                    msg['User'] = this.getChatRoomInfo(msg.actualOpposite) || defaultUseInfo;
+                } else if (['filehelper', 'fmessage'].indexOf(msg.actualOpposite) !== -1) {
+                    defaultUseInfo.myDefinedUserType = GlobalInfo.EMIT_NAME.FRIEND;
+                    msg['User'] = defaultUseInfo;
                 } else {
                     //订阅号以及公众号
-                    msg['User'] = this.getMpInfo(msg.actualOpposite) || this.getFriendInfo(msg.actualOpposite) || structFriendInfo({ 'UserName': msg.actualOpposite });
+                    defaultUseInfo.myDefinedUserType = GlobalInfo.EMIT_NAME.FRIEND;
+                    msg['User'] = this.getMpInfo(msg.actualOpposite) || this.getFriendInfo(msg.actualOpposite) || defaultUseInfo;
                 }
 
                 // 处理消息
@@ -232,7 +236,7 @@ export default class Message {
                         }
                     }
                 } else if (msg['MsgType'] === 51) {//phone init
-
+                    msgInfo = this.updateLocalUin(msg)
                 } else if (msg['MsgType'] === 10000) {
                     msgInfo = {
                         Type: 'Note',
@@ -263,29 +267,38 @@ export default class Message {
                         Text: 'UselessMsg',
                     };
                 }
-            
+
                 msg = { ...msg, ...msgInfo };
 
-                this.reply(msg, messageType);
+                this.reply(msg);
+
+                LogDebug(msg['User'].myDefinedUserType + ',' + msg['MsgType'] + ',' + JSON.stringify(msgInfo))
+
             }
         );
     }
 
-    reply(msg, messageType) {
+    reply(msg) {
         const messageFrom = msg.actualOpposite;
+        const emitName = msg['User'].myDefinedUserType;
+
+
         let retReply = {
-            type: 'Text',
-            text: msg['Content'],
-            msgType: msg['MsgType']
+            type: msg['Type'],
+            text: msg['Text'],
+            filename: msg['FileName']
         };
-        if (messageType === GlobalInfo.EMIT_NAME.CHAT_ROOM) {
+        if (emitName === GlobalInfo.EMIT_NAME.CHAT_ROOM) {
             retReply = {
                 ...retReply,
                 isAt: msg['IsAt'],
                 actualNickName: msg['ActualNickName']
             }
         }
-        this.emit(messageType, retReply, messageFrom)
+
+        emitName && this.emit(emitName, retReply, messageFrom)
+
+
     }
 
 }

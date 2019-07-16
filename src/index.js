@@ -7,7 +7,7 @@ import parser from 'fast-xml-parser';
 
 import Fetch, { toJSON } from './Fetch';
 
-import { convertRes, getUrlDomain, WhileDoing } from './Utils';
+import { convertRes, getUrlDomain, isArray, WhileDoing } from './Utils';
 
 import qrCode from './qrcode-terminal';
 import Cookies from './node-js-cookie';
@@ -34,6 +34,7 @@ export default class NodeWeChat extends EventEmitter {
         this.updateChatRoomInfo = this.contactIns.updateChatRoomInfo.bind(this.contactIns);
         this.getFriendInfo = this.contactIns.getFriendInfo.bind(this.contactIns);
         this.getMpInfo = this.contactIns.getMpInfo.bind(this.contactIns);
+        this.updateLocalUin = this.contactIns.updateLocalUin.bind(this.contactIns);
 
 
         this.messageIns = new Message({
@@ -43,6 +44,7 @@ export default class NodeWeChat extends EventEmitter {
             updateChatRoomInfo: this.updateChatRoomInfo,
             getFriendInfo: this.getFriendInfo,
             getMpInfo: this.getMpInfo,
+            updateLocalUin: this.updateLocalUin,
         });
 
     }
@@ -160,8 +162,10 @@ export default class NodeWeChat extends EventEmitter {
 
     };
 
-    startReceiving(exitCallback) {
-
+    startReceiving() {
+        if (!this.autoReceiving) {
+            return;
+        }
         const doingFn = async () => {
             const selector = await this.syncCheck();
             LogDebug('selector: ' + selector);
@@ -332,9 +336,15 @@ export default class NodeWeChat extends EventEmitter {
     };
 
     async run() {
+        await this.login(true);
+    }
+
+    async login(receiving = false) {
+        this.autoReceiving = receiving;
         await readAndMergeGlobalInfo();
         const isLogin = await this.showMobileLogin();
         if (isLogin) {
+            await this.contactIns.getContact(true);
             this.startReceiving();
         } else {
             const userId = await this.getUserId();
@@ -346,7 +356,19 @@ export default class NodeWeChat extends EventEmitter {
             this.loginWhileDoing.start();
         }
     }
+
+    listen(emitName, msgType, callback) {
+        if (!isArray(msgType)) {
+            msgType = [msgType];
+        }
+        this.on(emitName, (msgInfo, messageFrom) => {
+            if (msgType.indexOf(msgInfo.type) !== -1) {
+                callback && callback(msgInfo, messageFrom);
+            }
+        })
+    }
 }
 
-NodeWeChat.MESSAGE_TYPE = GlobalInfo.EMIT_NAME;
+NodeWeChat.EMIT_NAME = GlobalInfo.EMIT_NAME;
+NodeWeChat.MESSAGE_TYPE = GlobalInfo.MESSAGE_TYPE;
 
