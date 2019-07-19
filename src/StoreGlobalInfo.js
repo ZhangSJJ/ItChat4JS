@@ -2,11 +2,12 @@
  * @time 2019/7/4
  */
 
+
 'use strict';
 import fs from 'fs';
 import GlobalInfo from './GlobalInfo';
 import Cookies from "./node-js-cookie";
-import { LogDebug } from './Log';
+import { LogDebug, LogError } from './Log';
 
 export const saveGlobalInfo = () => {
     const stream = fs.createWriteStream('hot_login_config.js', { encoding: 'utf8' });
@@ -45,7 +46,7 @@ const readGlobalInfo = () => {
                 resolve(text);
             });
             stream.on('err', err => {
-                LogDebug('发生异常:' + err);
+                LogError('发生异常:' + err);
                 resolve(null);
             });
         }

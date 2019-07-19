@@ -102,16 +102,6 @@ export const msgFormatter = (data, key) => {
     data[key] = unescape(data[key]);
 };
 
-export const convertRes = (res) => {
-    if (res && res.body && res.body._readableState && res.body._readableState.buffer &&
-        res.body._readableState.buffer.head && res.body._readableState.buffer.head.data) {
-        const buffer = new Buffer(res.body._readableState.buffer.head.data);
-        return buffer.toString();
-    } else {
-        return null;
-    }
-};
-
 /**
  * 将时间转换为 yyyy-MM-dd HH:mm:ss 格式的字符串
  * @param date

@@ -5,13 +5,18 @@
 
 'use strict'
 import fs from 'fs';
-import { convertDate, convertRes, getUrlDomain, msgFormatter } from "./Utils";
-import Fetch, { toJSON } from './Fetch';
-import ReturnValueFormat from "./ReturnValueFormat";
+import path from 'path';
+import crypto from 'crypto';
+import FormData from 'form-data';
+import mineType from 'mime-types';
+
+import { convertDate, getUrlDomain, msgFormatter } from "./Utils";
+import Fetch from './Fetch';
 import GlobalInfo from './GlobalInfo';
 import { structFriendInfo } from "./ConvertData";
 import { LogDebug, LogError } from "./Log";
 
+const FILENAME_WITH_NO_DIR = 'TEMP-FILENAME';
 
 /**
  * 处理message
@@ -138,7 +143,7 @@ export default class Message {
                     msgInfo = {
                         Type: 'Picture',
                         FileName: filename,
-                        Text: downloadFileFn,
+                        Download: downloadFileFn,
                     };
                     LogDebug('Picture...111');//todo .gif download failed
                 } else if (msg['MsgType'] === 34) {//voice
@@ -148,7 +153,7 @@ export default class Message {
                     msgInfo = {
                         Type: 'Recording',
                         FileName: filename,
-                        Text: downloadFileFn,
+                        Download: downloadFileFn,
                     };
                     LogDebug('Voice...');
                 } else if (msg['MsgType'] === 37) {//friends
@@ -178,7 +183,7 @@ export default class Message {
                     msgInfo = {
                         Type: 'Video',
                         FileName: filename,
-                        Text: downloadFileFn,
+                        Download: downloadFileFn,
                     };
 
                     LogDebug('Video...');
@@ -190,13 +195,13 @@ export default class Message {
                         };
                         LogDebug('Chat History...')
                     } else if (msg['AppMsgType'] === 6) {
-                        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetmedia`;
+                        const url = `${GlobalInfo.LOGIN_INFO.fileUrl}/webwxgetmedia`;
                         const filename = msg.FileName || convertDate().replace(/-|:|\s/g, '');
                         const downloadFileFn = downloadAttachment(url, msg, filename);
                         msgInfo = {
                             Type: 'Attachment',
                             FileName: filename,
-                            Text: downloadFileFn,
+                            Download: downloadFileFn,
                         };
                         LogDebug('Attachment...')
                     } else if (msg['AppMsgType'] === 8) {
@@ -206,7 +211,7 @@ export default class Message {
                         msgInfo = {
                             Type: 'Picture',
                             FileName: filename,
-                            Text: downloadFileFn,
+                            Download: downloadFileFn,
                         };
 
                         LogDebug('Picture...222');
@@ -272,7 +277,7 @@ export default class Message {
 
                 this.reply(msg);
 
-                LogDebug(msg['User'].myDefinedUserType + ',' + msg['MsgType'] + ',' + JSON.stringify(msgInfo))
+                // LogDebug(msg['User'].myDefinedUserType + ',' + msg['MsgType'] + ',' + JSON.stringify(msgInfo))
 
             }
         );
@@ -286,7 +291,8 @@ export default class Message {
         let retReply = {
             type: msg['Type'],
             text: msg['Text'],
-            filename: msg['FileName']
+            filename: msg['FileName'],
+            download: msg['Download']
         };
         if (emitName === GlobalInfo.EMIT_NAME.CHAT_ROOM) {
             retReply = {
@@ -297,8 +303,6 @@ export default class Message {
         }
 
         emitName && this.emit(emitName, retReply, messageFrom)
-
-
     }
 
 }
@@ -313,8 +317,9 @@ export default class Message {
  */
 
 const downloadFile = (url, msgId, filename, isVideo = false) => {
-    return (path) => {
+    return (path, name) => {
         path = path || '';
+        name = name || filename;
         const params = {
             msgid: msgId,
             skey: GlobalInfo.LOGIN_INFO['skey'],
@@ -328,11 +333,11 @@ const downloadFile = (url, msgId, filename, isVideo = false) => {
         if (isVideo) {
             params.headers['Range'] = 'bytes=0-';
         }
-        path && !fs.existsSync(path) && fs.mkdirSync(path);
+        const realPath = makeDirs(path);
 
         return new Promise(resolve => {
             Fetch(url, params).then(data => {
-                fs.writeFile(path + filename, data, function (err) {
+                fs.writeFile(realPath + name, data, function (err) {
                     if (err) {
                         LogError('File Download Error:' + err);
                         resolve('File Download Error!')
@@ -347,9 +352,9 @@ const downloadFile = (url, msgId, filename, isVideo = false) => {
 
 
 const downloadAttachment = (url, msg, filename) => {
-    return (path) => {
+    return (path, name) => {
         path = path || '';
-
+        name = name || filename;
         const webwxDataTicket = GlobalInfo.LOGIN_INFO.cookies.getValue('webwx_data_ticket', getUrlDomain(url));
 
         const params = {
@@ -367,11 +372,11 @@ const downloadAttachment = (url, msg, filename) => {
             }
         };
 
-        path && !fs.existsSync(path) && fs.mkdirSync(path);
+        const realPath = makeDirs(path);
 
         return new Promise(resolve => {
             Fetch(url, params).then(data => {
-                fs.writeFile(path + filename, data, function (err) {
+                fs.writeFile(realPath + name, data, function (err) {
                     if (err) {
                         LogError('File Download Error:' + err);
                         resolve('File Download Error!')
@@ -382,4 +387,289 @@ const downloadAttachment = (url, msg, filename) => {
             });
         });
     }
+};
+
+const makeDirs = (pathStr) => {
+    if (!pathStr) {
+        return '';
+    }
+    const sep = path.sep;
+    pathStr = path.dirname(pathStr + sep + 'dir');
+    //解决path.dirname('aa/bb/cc')和path.dirname('aa/bb/cc/')都返回aa/bb/
+    //path.dirname('aa/bb/cc')和path.dirname('aa/bb/cc/')--->aa/bb/cc 或 aa/bb/cc/
+
+    let pathTemp = '';
+    pathStr.split(/[/\\]/).forEach(dirName => {
+        if (!dirName) {
+            return;
+        }
+        if (pathTemp) {
+            pathTemp = path.join(pathTemp, dirName);
+        }
+        else {
+            pathTemp = dirName;
+        }
+        if (!fs.existsSync(pathTemp)) {
+            fs.mkdirSync(pathTemp);
+        }
+    });
+    const isAbsolute = path.isAbsolute(pathStr);
+    return (isAbsolute ? sep : '') + pathTemp + sep;
+};
+
+
+const sendMsg = async ({ url, msgType, content, toUserName = 'filehelper', mediaId }) => {
+    const params = {
+        method: 'post',
+        BaseRequest: {
+            ...GlobalInfo.BaseRequest,
+            DeviceID: 'e' + ((Math.random() + '').substring(2, 17))
+        },
+        Msg: {
+            Type: msgType,
+            FromUserName: GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
+            ToUserName: toUserName || GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
+            LocalID: Date.now() * 1e4 + '',
+            ClientMsgId: Date.now() * 1e4 + '',
+        },
+        Scene: 0,
+        headers: {
+            cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+        }
+    };
+
+    if (!!content) {
+        params.Msg.Content = content;
+    }
+    if (!!mediaId) {
+        params.Msg.MediaId = mediaId;
+    }
+
+    const res = await Fetch(url, params);
+    LogDebug(res);
+    return res;
+};
+
+
+export const sendTextMsg = async (msg, toUserName) => {
+    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendmsg`;
+    LogDebug('Request to send a text message to ' + toUserName + ': ' + msg);
+    return await sendMsg({
+        url, msgType: 1, content: msg, toUserName
+    })
+
+};
+
+export const sendFile = async (fileDir, toUserName = 'filehelper', mediaId, streamInfo = {}) => {
+    LogDebug(`Request to send a file(mediaId: ${mediaId}) to ${toUserName}: ${fileDir}`);
+    let { fileReadStream, filename, extName } = streamInfo;
+    const preparedFile = await prepareFile(fileDir, fileReadStream);
+    if (!preparedFile) {
+        LogError('File Analysis Failed...');
+        return;
+    }
+    const { fileSize } = preparedFile;
+    if (!mediaId) {
+        const uploadRes = await uploadFile({ fileDir, toUserName, preparedFile });
+        if (!uploadRes.BaseResponse || uploadRes.BaseResponse.Ret !== 0 || !uploadRes['MediaId']) {
+            LogError(`Request to upload a file: ${fileDir} failed`);
+            return;
+        }
+        mediaId = uploadRes['MediaId'];
+    }
+    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendappmsg?fun=async&f=json`;
+    extName = (extName || '').slice(1);
+    if (!!fileDir) {
+        filename = path.basename(fileDir);
+        extName = path.extname(fileDir).slice(1);
+    }
+
+    const content = `<appmsg appid='wxeb7ec651dd0aefa9' sdkver=''><title>${filename}</title><des></des><action></action><type>6</type><content></content><url></url><lowurl></lowurl><appattach><totallen>${fileSize}</totallen><attachid>${mediaId}</attachid><fileext>${extName}</fileext></appattach><extinfo></extinfo></appmsg>`;
+    return await sendMsg({
+        url, msgType: 6, content, toUserName, mediaId
+    });
+};
+
+
+export const sendImage = async (fileDir, toUserName = 'filehelper', mediaId, streamInfo = {}) => {
+    LogDebug(`Request to send a image(mediaId: ${mediaId}) to ${toUserName}: ${fileDir}`);
+    const { fileReadStream, extName } = streamInfo;
+    const preparedFile = await prepareFile(fileDir, fileReadStream);
+    if (!preparedFile) {
+        LogError('File Analysis Failed...');
+        return;
+    }
+    if (!mediaId) {
+        const isGif = extName === '.gif' || (fileDir && path.extname(fileDir) === '.gif');
+        const uploadRes = await uploadFile({ fileDir, toUserName, isPicture: !isGif, preparedFile });
+        if (!uploadRes.BaseResponse || uploadRes.BaseResponse.Ret !== 0 || !uploadRes['MediaId']) {
+            LogError(`Request to upload a image: ${fileDir} failed`);
+            return;
+        }
+        mediaId = uploadRes['MediaId'];
+    }
+    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendmsgimg?fun=async&f=json`;
+
+    return await sendMsg({
+        url, msgType: 3, toUserName, mediaId
+    });
+
+};
+export const sendVideo = async (fileDir, toUserName = 'filehelper', mediaId, streamInfo = {}) => {
+    LogDebug(`Request to send a video(mediaId: ${mediaId}) to ${toUserName}: ${fileDir}`);
+    const { fileReadStream } = streamInfo;
+    const preparedFile = await prepareFile(fileDir, fileReadStream);
+    if (!preparedFile) {
+        LogError('File Analysis Failed...');
+        return;
+    }
+    if (!mediaId) {
+        const uploadRes = await uploadFile({ fileDir, toUserName, isVideo: true, preparedFile });
+        if (!uploadRes.BaseResponse || uploadRes.BaseResponse.Ret !== 0 || !uploadRes['MediaId']) {
+            LogError(`Request to upload a video: ${fileDir} failed`);
+            return;
+        }
+        mediaId = uploadRes['MediaId'];
+    }
+
+    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendvideomsg?fun=async&f=json&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+
+    return await sendMsg({
+        url, msgType: 43, toUserName, mediaId
+    });
+};
+
+export const revokeMsg = async (msgId, toUserName, localId) => {
+    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxrevokemsg`;
+    const params = {
+        method: 'post',
+        BaseRequest: GlobalInfo.BaseRequest,
+        ClientMsgId: localId || (Date.now() + ''),
+        SvrMsgId: msgId,
+        ToUserName: toUserName,
+        headers: {
+            cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+        }
+    };
+
+    const res = await Fetch(url, params);
+    LogDebug(res);
+    return res;
+};
+
+/**
+ * 解析文件，获得文件MD5，buffer，fileSize
+ * @param fileDir
+ * @param fileStream
+ * @returns {Promise}
+ */
+export const prepareFile = (fileDir, fileStream) => {
+    return new Promise((resolve) => {
+        if (!fileDir && !fileStream) {
+            resolve(null);
+        }
+        let md5sum = crypto.createHash('md5');
+        const stream = fileStream || fs.createReadStream(fileDir);
+        const bufferArr = [];
+        let fileSize = 0;
+
+        stream.on('data', function (chunk) {
+            md5sum.update(chunk);
+            bufferArr.push(chunk);
+            fileSize += chunk.length;
+        });
+        stream.on('end', function () {
+            let fileMd5 = md5sum.digest('hex');
+            const buffer = Buffer.concat(bufferArr);
+            resolve({ fileMd5, buffer, fileSize })
+        });
+        stream.on('err', err => {
+            LogError('发生异常:' + err);
+            resolve(null);
+        });
+    })
+};
+
+/**
+ * todo js文件上传失败
+ * @param fileDir
+ * @param isPicture
+ * @param isVideo
+ * @param toUserName
+ * @param preparedFile
+ * @returns {Promise.<*>}
+ */
+
+export const uploadFile = async ({ fileDir, isPicture = false, isVideo = false, toUserName = 'filehelper', preparedFile }) => {
+    LogDebug(`Request to upload a ${isPicture ? 'picture' : (isVideo ? 'video' : 'file')}: ${fileDir}`);
+    preparedFile = preparedFile || await prepareFile(fileDir, fileStream);
+    if (!preparedFile) {
+        LogError('File Analysis Failed...');
+        return;
+    }
+
+    const url = `${GlobalInfo.LOGIN_INFO.fileUrl || GlobalInfo.LOGIN_INFO.loginUrl}/webwxuploadmedia?f=json`;
+
+    const { fileMd5, buffer, fileSize } = preparedFile;
+    let fileSymbol = 'doc';
+    if (isPicture) {
+        fileSymbol = 'pic';
+    } else if (isVideo) {
+        fileSymbol = 'video';
+    }
+
+    let fileName = FILENAME_WITH_NO_DIR;
+    let fileType = 'application/octet-stream';
+    if (!!fileDir) {
+        fileName = path.basename(fileDir);
+        fileType = mineType.lookup(fileDir);
+    }
+
+    const uploadMediaRequest = {
+        UploadType: 2,
+        BaseRequest: GlobalInfo.BaseRequest,
+        ClientMediaId: Date.now(),
+        TotalLen: fileSize,
+        StartPos: 0,
+        DataLen: fileSize,
+        MediaType: 4,
+        FromUserName: GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
+        ToUserName: toUserName,
+        FileMd5: fileMd5
+    };
+
+    const webwxDataTicket = GlobalInfo.LOGIN_INFO.cookies.getValue('webwx_data_ticket', getUrlDomain(url));
+    const formData = new FormData();
+
+    formData.append('filename', buffer, {
+        filename: fileName,
+        contentType: fileType,//文件类型标识
+    });
+    const dataJson = {
+        id: 'WU_FILE_0',
+        name: fileName,
+        type: fileType,
+        lastModifiedDate: (new Date()).toString(),
+        size: fileSize,
+        mediatype: fileSymbol,
+        uploadmediarequest: JSON.stringify(uploadMediaRequest),
+        webwx_data_ticket: webwxDataTicket,
+        pass_ticket: GlobalInfo.LOGIN_INFO.pass_ticket,
+    };
+
+    Object.keys(dataJson).forEach(key => {
+        formData.append(key, dataJson[key]);
+    });
+
+    const res = await Fetch(url, {
+        method: 'POST',
+        formData,
+        headers: {
+            cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url)),
+            'Content-Type': 'multipart/form-data',
+            ...(formData.getHeaders() || {})
+        }
+    });
+    LogDebug(res);
+    return res;
 };

@@ -3,7 +3,7 @@ import querystring from 'querystring'
 import GlobalInfo from "./GlobalInfo";
 
 const Fetch = (url, options = {}) => {
-    const { headers, method = 'GET', json = true, buffer = false, timeout, redirect = 'follow', ...restOptions } = options;
+    const { headers, method = 'GET', json = true, buffer = false, formData = null, timeout, redirect = 'follow', ...restOptions } = options;
     const methodUpCase = method.toUpperCase();
 
     let finalOptions = {
@@ -18,7 +18,9 @@ const Fetch = (url, options = {}) => {
 
     };
 
-    if (!!Object.keys(restOptions).length) {
+    if (!!formData) {
+        finalOptions.body = formData;
+    } else if (!!Object.keys(restOptions).length) {
         if (methodUpCase === 'POST') {
             finalOptions.body = JSON.stringify(restOptions)
         } else if (methodUpCase === 'GET') {
@@ -66,6 +68,9 @@ export function toJSON(response) {
 
 export function toBuffer(response) {
     // 如果 response 状态异常，抛出错误
+    if (response.status === 301) {
+        return response.buffer();
+    }
     //附件，图片，音频下载status=200,视频下载：206（header中加入了range）
     if (!response.ok || (response.status !== 200 && response.status !== 206)) {
         return Promise.reject(new Error(response.statusText));

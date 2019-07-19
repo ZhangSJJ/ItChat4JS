@@ -277,4 +277,47 @@ export default class Contact {
 
         return ret;
     }
+
+    /**
+     * for adding status should be 2
+     * for accepting status should be 3
+     * @param userName
+     * @param status
+     * @param verifyContent
+     * @param autoUpdate
+     * @returns {Promise.<*>}
+     */
+    async verifyFriend(userName, status = 2, verifyContent = '', autoUpdate = true) {
+        LogDebug('Add a friend or accept a friend');
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxverifyuser`;
+        const params = {
+            method: 'post',
+            r: Date.now(),
+            pass_ticket: GlobalInfo.LOGIN_INFO.pass_ticket,
+            BaseRequest: GlobalInfo.BaseRequest,
+            Opcode: status,
+            VerifyUserListSize: 1,
+            VerifyUserList: [{
+                Value: userName,
+                VerifyUserTicket: '',
+            }],
+            VerifyContent: verifyContent,
+            SceneListCount: 1,
+            SceneList: [33],
+            skey: GlobalInfo.LOGIN_INFO['skey'],
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+            }
+        };
+
+        const res = await Fetch(url, params);
+        LogDebug(res);
+
+        if (autoUpdate) {
+            await this.updateFriendInfo(userName)
+        }
+        return res;
+    };
+
+
 }
