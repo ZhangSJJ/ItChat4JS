@@ -44,6 +44,7 @@ class NodeWeChat extends EventEmitter {
         });
 
         this.verifyFriend = this.contactIns.verifyFriend.bind(this.contactIns);
+        this.getContactInfoByName = this.contactIns.getContactInfoByName.bind(this.contactIns);
 
     }
 
@@ -324,7 +325,7 @@ class NodeWeChat extends EventEmitter {
             this.loginWhileDoing = new WhileDoing(async () => {
                 await this.checkUserLogin(userId);
             });
-            this.loginWhileDoing.start();
+            await this.loginWhileDoing.start();
         }
     }
 

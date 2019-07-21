@@ -71,9 +71,14 @@ export default class Contact {
     /**
      * 在所有的list中查找成员
      */
-    getUseInfo(userName) {
+    getUserInfo(userName) {
         const fullContact = this.chatRoomList.concat(this.memberList).concat(this.mpList);
         return fullContact.find(i => i.UserName === userName);
+    }
+
+    getContactInfoByName(name) {
+        const fullContact = this.chatRoomList.concat(this.memberList).concat(this.mpList);
+        return fullContact.find(i => i.UserName === name || i.NickName === name);
     }
 
     async updateChatRoomInfo(userName) {
@@ -226,7 +231,7 @@ export default class Contact {
                     if (username.indexOf('@') === -1) {
                         return;
                     }
-                    const userInfo = this.getUseInfo(username);
+                    const userInfo = this.getUserInfo(username);
                     if (userInfo) {
                         if ((userInfo['Uin'] || 0) === 0) {
                             userInfo['Uin'] = uin;

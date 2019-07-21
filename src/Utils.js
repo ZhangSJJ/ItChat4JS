@@ -2,7 +2,6 @@
  * @time 2019/5/27
  */
 
-
 export class WhileDoing {
     constructor(doingFn, intervalTime = 1000) {
         this.doingFn = doingFn;
@@ -11,19 +10,24 @@ export class WhileDoing {
         this.endFlag = false;
     }
 
-    start() {
+    async start() {
         const doFn = async () => {
             this.clearId();
             await this.doingFn();
-            this.doId = setTimeout(async () => {
-                if (this.endFlag) {
-                    this.clearId();
-                    return;
-                }
-                await doFn();
-            }, this.intervalTime)
+            const promise = new Promise(resolve => {
+                this.doId = setTimeout(async () => {
+                    if (this.endFlag) {
+                        this.clearId();
+                        resolve();
+                        return;
+                    }
+                    await doFn();
+                    resolve();
+                }, this.intervalTime)
+            });
+            await promise;
         };
-        doFn();
+        await doFn();
     }
 
     end() {
@@ -35,6 +39,7 @@ export class WhileDoing {
         this.doId = null;
     }
 }
+
 
 export const getUrlDomain = (url) => {
     if (!url) {

@@ -102,10 +102,11 @@ export default class Message {
                 // set user of msg
                 const defaultUseInfo = structFriendInfo({ 'UserName': msg.actualOpposite });
                 if (msg.actualOpposite.indexOf('@@') !== -1) {
-                    //群聊或者文件助手
+                    //群聊
                     defaultUseInfo.myDefinedUserType = GlobalInfo.EMIT_NAME.CHAT_ROOM;
                     msg['User'] = this.getChatRoomInfo(msg.actualOpposite) || defaultUseInfo;
                 } else if (['filehelper', 'fmessage'].indexOf(msg.actualOpposite) !== -1) {
+                    //文件助手等
                     defaultUseInfo.myDefinedUserType = GlobalInfo.EMIT_NAME.FRIEND;
                     msg['User'] = defaultUseInfo;
                 } else {
@@ -274,6 +275,8 @@ export default class Message {
                 }
 
                 msg = { ...msg, ...msgInfo };
+
+
 
                 this.reply(msg);
 
