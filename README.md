@@ -399,3 +399,6 @@ doFn();
 
 
 [ItChat]: https://github.com/littlecodersh/ItChat
+[littlecodersh]: https://github.com/littlecodersh
+[tempdban]: https://github.com/tempdban
+[Chyroc]: https://github.com/Chyroc
