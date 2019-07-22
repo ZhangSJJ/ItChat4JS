@@ -21,7 +21,6 @@ const itChat4JsIns = new ItChat4JS();
 
 const doFn = async () => {
     await itChat4JsIns.login();
-
     await sendTextMsg('Hello FileHelper', 'filehelper');
 };
 
@@ -181,7 +180,6 @@ const itChat4JsIns = new ItChat4JS();
 
 const doFn = async () => {
     await itChat4JsIns.login();
-
     console.log(itChat4JsIns.getContactInfoByName('xxx'));
 };
 
@@ -275,7 +273,7 @@ const doFn = async () => {
     const stream = fs.createReadStream('./file/img.png');
     const streamInfo = {
         fileReadStream: stream,
-        filename: 'img.png',
+        //filename: 'img.png',
         extName: '.png'
     };
     sendImage(null, 'filehelper', null, streamInfo)
@@ -323,8 +321,8 @@ const doFn = async () => {
     const stream = fs.createReadStream('./file/video.mp4');
     const streamInfo = {
         fileReadStream: stream,
-        filename: 'video.mp4',
-        extName: '.mp4'
+        //filename: 'video.mp4',
+        //extName: '.mp4'
     };
     sendVideo(null, 'filehelper', null, streamInfo)
 };
