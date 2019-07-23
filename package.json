@@ -1,6 +1,6 @@
 {
-  "name": "itchatnode",
-  "version": "1.0.4",
+  "name": "itchat4js",
+  "version": "1.0.0",
   "description": "",
   "main": "./lib/index.js",
   "scripts": {

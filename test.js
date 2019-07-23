@@ -1,4 +1,6 @@
 import NodeWeChat, { sendFile, sendImage, sendVideo, sendTextMsg, revokeMsg, EMIT_NAME, MESSAGE_TYPE } from './src';
+import { uploadFile } from "./src/Message";
+
 
 const NodeWeChatIns = new NodeWeChat();
 // NodeWeChatIns.run();
@@ -21,8 +23,8 @@ const NodeWeChatIns = new NodeWeChat();
 //         const { status, verifyContent, autoUpdate: { UserName } } = text;
 //         NodeWeChatIns.verifyFriend(UserName, status, verifyContent)
 //     } else if (type === MESSAGE_TYPE.TEXT) {
-//         // const uu = '@26f8ddca0d4d0b0c18ccf9d5be97b36cf600d13f44dfd88808470dad28c2f29b';
 //         sendTextMsg(text)
+//         console.log(text, toUserName)
 //         // NodeWeChatIns.verifyFriend(uu,2,'zsj')
 //     } else if (type === MESSAGE_TYPE.VIDEO) {
 //         await download('download/friend/video');
@@ -62,23 +64,6 @@ const NodeWeChatIns = new NodeWeChat();
 // });
 
 
-// NodeWeChatIns.run();
-//
-//
-// NodeWeChatIns.listen( EMIT_NAME.FRIEND, arr, (msgInfo, toUserName) => {
-//
-//     const { text, type, filename, download } = msgInfo;
-//     if (type ===  MESSAGE_TYPE.TEXT) {
-//
-//         console.log( EMIT_NAME.FRIEND, text, toUserName);
-//         uploadFile('./timg.gif')
-//
-//
-//     }
-//
-//
-// });
-
 var fs = require('fs');
 var fn = async () => {
     await NodeWeChatIns.login();
@@ -104,12 +89,64 @@ var fn = async () => {
 
     // console.log(NodeWeChatIns.getUserInfoByName('比都个是还不你了对NIAN'))
 
-    const username = NodeWeChatIns.getContactInfoByName('比都个是还不你了对NIAN').UserName;
-    const res = await sendTextMsg('fff', username);
-    console.log(res)
-    setTimeout(() => {
-        revokeMsg(res.MsgID, username, res.LocalID)
-    }, 6000)
+    const userInfo = NodeWeChatIns.getContactInfoByName('Kobe Zhang');
+
+    // console.log(userInfo)
+    try {
+        const res = await  sendFile('./tt.png', userInfo.UserName)
+        console.log(res)
+    } catch (e) {
+        console.log('err', e)
+    }
+
+    // const ss = await uploadChunksssss({
+    //     fileDir: './tt.png'
+    // })
+    // console.log(ss,'============')
+
 }
 
 fn()
+
+const prepareFile = (fileDir, fileStream) => {
+    return new Promise((resolve) => {
+        if (!fileDir && !fileStream) {
+            resolve(null);
+        }
+
+        const stream = fileStream || fs.createReadStream(fileDir);
+        const bufferArr = [];
+        let fileSize = 0;
+
+        stream.on('data', function (chunk) {
+
+            bufferArr.push(chunk);
+            fileSize += chunk.length;
+        });
+        stream.on('end', function () {
+
+            const buffer = Buffer.concat(bufferArr);
+
+            const chunks = Math.floor((fileSize - 1) / 524288) + 1;
+            console.log(chunks);
+
+            const bufferArr111 = Array.from({ length: chunks }).map((v, index) => {
+                return buffer.slice(index * 524288, (index + 1) * 524288)
+            });
+
+            const temp = Buffer.concat(bufferArr111)
+
+
+            console.log(temp.length, buffer.length, fileSize, bufferArr111.length, bufferArr111)
+
+            resolve({ buffer: bufferArr111, fileSize })
+        });
+        stream.on('err', err => {
+
+            resolve(null);
+        });
+    })
+};
+
+
+

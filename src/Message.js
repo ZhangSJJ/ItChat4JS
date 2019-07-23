@@ -277,7 +277,6 @@ export default class Message {
                 msg = { ...msg, ...msgInfo };
 
 
-
                 this.reply(msg);
 
                 // LogDebug(msg['User'].myDefinedUserType + ',' + msg['MsgType'] + ',' + JSON.stringify(msgInfo))
@@ -584,17 +583,21 @@ export const prepareFile = (fileDir, fileStream) => {
         stream.on('end', function () {
             let fileMd5 = md5sum.digest('hex');
             const buffer = Buffer.concat(bufferArr);
-            resolve({ fileMd5, buffer, fileSize })
+            const chunks = Math.floor((fileSize - 1) / 524288) + 1;
+            const retBufferArr = Array.from({ length: chunks }).map((v, index) => {
+                return buffer.slice(index * 524288, (index + 1) * 524288)
+            });
+            resolve({ fileMd5, bufferArr: retBufferArr, fileSize })
+
         });
         stream.on('err', err => {
-            LogError('发生异常:' + err);
+            LogError('解析文件发生异常:' + err);
             resolve(null);
         });
     })
 };
 
 /**
- * todo js文件上传失败
  * @param fileDir
  * @param isPicture
  * @param isVideo
@@ -602,18 +605,17 @@ export const prepareFile = (fileDir, fileStream) => {
  * @param preparedFile
  * @returns {Promise.<*>}
  */
-
 export const uploadFile = async ({ fileDir, isPicture = false, isVideo = false, toUserName = 'filehelper', preparedFile }) => {
     LogDebug(`Request to upload a ${isPicture ? 'picture' : (isVideo ? 'video' : 'file')}: ${fileDir}`);
-    preparedFile = preparedFile || await prepareFile(fileDir, fileStream);
-    if (!preparedFile) {
+    preparedFile = preparedFile || await prepareFile(fileDir);
+
+    const { fileMd5, bufferArr, fileSize } = preparedFile;
+
+    if (!preparedFile || !bufferArr || !bufferArr.length) {
         LogError('File Analysis Failed...');
         return;
     }
 
-    const url = `${GlobalInfo.LOGIN_INFO.fileUrl || GlobalInfo.LOGIN_INFO.loginUrl}/webwxuploadmedia?f=json`;
-
-    const { fileMd5, buffer, fileSize } = preparedFile;
     let fileSymbol = 'doc';
     if (isPicture) {
         fileSymbol = 'pic';
@@ -628,13 +630,36 @@ export const uploadFile = async ({ fileDir, isPicture = false, isVideo = false, 
         fileType = mineType.lookup(fileDir);
     }
 
+
+    const promiseArr = bufferArr.map((buffer, index) => {
+        return uploadChunk({
+            buffer,
+            fileMd5,
+            fileSymbol,
+            totalFileSize: fileSize,
+            fileName,
+            fileType,
+            toUserName,
+            chunks: bufferArr.length,
+            chunk: index
+        });
+    });
+
+    return promiseArr.reduce((result, next) => {
+        return result.then(() => next())
+    }, Promise.resolve())
+};
+
+
+const uploadChunk = ({ buffer, fileMd5, fileSymbol, totalFileSize, fileName, fileType, toUserName, chunks, chunk }) => {
+    const url = `${GlobalInfo.LOGIN_INFO.fileUrl || GlobalInfo.LOGIN_INFO.loginUrl}/webwxuploadmedia?f=json`;
     const uploadMediaRequest = {
         UploadType: 2,
         BaseRequest: GlobalInfo.BaseRequest,
         ClientMediaId: Date.now(),
-        TotalLen: fileSize,
+        TotalLen: totalFileSize,
         StartPos: 0,
-        DataLen: fileSize,
+        DataLen: totalFileSize,
         MediaType: 4,
         FromUserName: GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
         ToUserName: toUserName,
@@ -642,37 +667,45 @@ export const uploadFile = async ({ fileDir, isPicture = false, isVideo = false, 
     };
 
     const webwxDataTicket = GlobalInfo.LOGIN_INFO.cookies.getValue('webwx_data_ticket', getUrlDomain(url));
-    const formData = new FormData();
 
-    formData.append('filename', buffer, {
-        filename: fileName,
-        contentType: fileType,//文件类型标识
-    });
     const dataJson = {
         id: 'WU_FILE_0',
         name: fileName,
         type: fileType,
         lastModifiedDate: (new Date()).toString(),
-        size: fileSize,
+        size: totalFileSize,
         mediatype: fileSymbol,
         uploadmediarequest: JSON.stringify(uploadMediaRequest),
         webwx_data_ticket: webwxDataTicket,
         pass_ticket: GlobalInfo.LOGIN_INFO.pass_ticket,
     };
 
-    Object.keys(dataJson).forEach(key => {
-        formData.append(key, dataJson[key]);
-    });
+    return () => {
+        //必须返回一个函数，延迟promise执行
+        LogDebug(`Request to upload a chunk ${fileSymbol}, chunks: ${chunks}, chunk: ${chunk} to: ${toUserName}`);
+        const formData = new FormData();
+        formData.append('filename', buffer, {
+            filename: fileName,
+            contentType: fileType,
+        });
 
-    const res = await Fetch(url, {
-        method: 'POST',
-        formData,
-        headers: {
-            cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url)),
-            'Content-Type': 'multipart/form-data',
-            ...(formData.getHeaders() || {})
+        if (chunks > 1) {
+            dataJson.chunks = chunks;
+            dataJson.chunk = chunk;
         }
-    });
-    LogDebug(res);
-    return res;
+
+        Object.keys(dataJson).forEach(key => {
+            formData.append(key, dataJson[key]);
+        });
+
+        return Fetch(url, {
+            method: 'POST',
+            formData,
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url)),
+                'Content-Type': 'multipart/form-data',
+                ...(formData.getHeaders() || {})
+            }
+        });
+    }
 };

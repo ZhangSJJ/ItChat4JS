@@ -78,7 +78,7 @@ export default class Contact {
 
     getContactInfoByName(name) {
         const fullContact = this.chatRoomList.concat(this.memberList).concat(this.mpList);
-        return fullContact.find(i => i.UserName === name || i.NickName === name);
+        return fullContact.find(i => i.UserName === name || i.NickName === name || i.RemarkName === name);
     }
 
     async updateChatRoomInfo(userName) {
