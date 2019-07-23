@@ -158,18 +158,19 @@ verifyContent：添加和被添加的验证内容
 autoUpdate：是否更新本地好友信息，默认值为true
 
 ```javascript
-import ItChat4JS, { sendTextMsg, EMIT_NAME, MESSAGE_TYPE  } from 'itchat4js';
+import ItChat4JS, { EMIT_NAME, MESSAGE_TYPE  } from 'itchat4js';
 
 const itChat4JsIns = new ItChat4JS();
 
 itChat4JsIns.listen(EMIT_NAME.FRIEND, MESSAGE_TYPE.FRIENDS, async (msgInfo, toUserName) => {
-   const { status, verifyContent, autoUpdate: { UserName } } = text;
-   itChat4JsIns.verifyFriend(UserName, status, verifyContent)
+    const { text } = msgInfo;
+    const { status, verifyContent, autoUpdate: { UserName } } = text;
+    itChat4JsIns.verifyFriend(UserName, status, verifyContent)
 });
 
 itChat4JsIns.run();
 ```
-####  4.通过UserName或者NickName获取好友信息  getContactInfoByName(name)
+####  4.通过UserName，NickName或者RemarkName获取好友信息  getContactInfoByName(name)
 
 name：UserName或者NickName
 
@@ -199,7 +200,7 @@ mediaId：上传文件之后返回的MediaId
 streamInfo：文件流信息,包含：fileReadStream文件流，filename文件名，extName文件扩展名
 
 ```javascript
-import ItChat4JS from 'itchat4js';
+import ItChat4JS, { sendFile } from 'itchat4js';
 
 const itChat4JsIns = new ItChat4JS();
 
@@ -214,7 +215,7 @@ doFn();
 或者
 
 ```javascript
-import ItChat4JS from 'itchat4js';
+import ItChat4JS, { sendFile } from 'itchat4js';
 
 import fs from 'fs';
 
@@ -247,7 +248,7 @@ mediaId：上传文件之后返回的MediaId
 streamInfo：文件流信息,包含：fileReadStream文件流，filename文件名，extName文件扩展名
 
 ```javascript
-import ItChat4JS from 'itchat4js';
+import ItChat4JS, { sendImage } from 'itchat4js';
 
 const itChat4JsIns = new ItChat4JS();
 
@@ -262,7 +263,7 @@ doFn();
 或者
 
 ```javascript
-import ItChat4JS from 'itchat4js';
+import ItChat4JS, { sendImage } from 'itchat4js';
 
 import fs from 'fs';
 
@@ -295,7 +296,7 @@ mediaId：上传文件之后返回的MediaId
 streamInfo：文件流信息,包含：fileReadStream文件流，filename文件名，extName文件扩展名
 
 ```javascript
-import ItChat4JS from 'itchat4js';
+import ItChat4JS, { sendVideo } from 'itchat4js';
 
 const itChat4JsIns = new ItChat4JS();
 
@@ -310,7 +311,7 @@ doFn();
 或者
 
 ```javascript
-import ItChat4JS from 'itchat4js';
+import ItChat4JS, { sendVideo } from 'itchat4js';
 
 import fs from 'fs';
 
@@ -337,7 +338,7 @@ msg：文本内容
 toUserName：发送的好友UserName
 
 ```javascript
-import ItChat4JS from 'itchat4js';
+import ItChat4JS, { sendTextMsg } from 'itchat4js';
 
 const itChat4JsIns = new ItChat4JS();
 
@@ -353,7 +354,7 @@ doFn();
 ####  4.撤回发送的消息  async revokeMsg(msgId, toUserName, localId)
 
 ```javascript
-import ItChat4JS from 'itchat4js';
+import ItChat4JS, { revokeMsg } from 'itchat4js';
 
 const itChat4JsIns = new ItChat4JS();
 
