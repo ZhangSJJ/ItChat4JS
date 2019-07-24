@@ -187,6 +187,119 @@ const doFn = async () => {
 doFn()
 ```
 
+####  5.设置好友备注   async setAlias(userName, alias = '')
+
+userName：UserName，NickName或RemarkName
+alias：备注
+```javascript
+import ItChat4JS from 'itchat4js';
+
+const itChat4JsIns = new ItChat4JS();
+
+const doFn = async () => {
+    await itChat4JsIns.login();
+    const info = itChat4JsIns.getContactInfoByName('xxx');
+    itChat4JsIns.setAlias(info.UserName, '备注名称');
+};
+
+doFn()
+```
+
+####  6.设置群组，好友置顶   async setPinned(userName, isPinned = true)
+
+userName：UserName，NickName或RemarkName
+isPinned：是否置顶
+```javascript
+import ItChat4JS from 'itchat4js';
+
+const itChat4JsIns = new ItChat4JS();
+
+const doFn = async () => {
+    await itChat4JsIns.login();
+    const info = itChat4JsIns.getContactInfoByName('xxx');
+    itChat4JsIns.setPinned(info.UserName, true);
+};
+
+doFn()
+```
+
+####  7.创建群聊   async createChatRoom(memberList, topic = '')
+
+memberList：用户列表（[{UserName: 'xxx}]）
+topic：群名称
+```javascript
+import ItChat4JS from 'itchat4js';
+
+const itChat4JsIns = new ItChat4JS();
+
+const doFn = async () => {
+    await itChat4JsIns.login();
+    const userArr = itChat4JsIns.getContactInfoByName(['AAA', 'BBB']);
+    itChat4JsIns.createChatRoom(userArr, '群聊名称');
+};
+
+doFn()
+```
+
+####  8.设置群聊名称   async setChatRoomName(chatRoomUserName, name) {
+
+chatRoomUserName：群UserName
+name：群名称
+```javascript
+import ItChat4JS from 'itchat4js';
+
+const itChat4JsIns = new ItChat4JS();
+
+const doFn = async () => {
+    await itChat4JsIns.login();
+    const info = itChat4JsIns.getContactInfoByName('XXX');
+    itChat4JsIns.setChatRoomName(info.UserName, '群聊名称');
+};
+
+doFn()
+```
+
+####  9.删除群成员   async deleteMemberFromChatRoom(chatRoomUserName, memberList) {
+
+#### Tip：删除群成员总是返回Ret：1不成功（网页版也不成功）
+
+chatRoomUserName：群UserName
+memberList：用户列表（[{UserName: 'xxx}]）
+```javascript
+import ItChat4JS from 'itchat4js';
+
+const itChat4JsIns = new ItChat4JS();
+
+const doFn = async () => {
+    await itChat4JsIns.login();
+    const userArr = NodeWeChatIns.getContactInfoByName(['AAA', 'BBB']);
+    const info = itChat4JsIns.getContactInfoByName('XXX');
+    itChat4JsIns.deleteMemberFromChatRoom(info.UserName, userArr);
+};
+
+doFn()
+```
+
+####  10.添加群成员   async addMemberIntoChatRoom(chatRoomUserName, memberList, useInvitation = false) {
+
+chatRoomUserName：群UserName
+memberList：用户列表（[{UserName: 'xxx}]）
+useInvitation：是否以发出邀请的形式
+```javascript
+import ItChat4JS from 'itchat4js';
+
+const itChat4JsIns = new ItChat4JS();
+
+const doFn = async () => {
+    await itChat4JsIns.login();
+   const userArr = NodeWeChatIns.getContactInfoByName(['AAA', 'BBB']);
+    const info = itChat4JsIns.getContactInfoByName('XXX');
+    itChat4JsIns.addMemberIntoChatRoom(info.UserName, userArr, true);
+};
+
+doFn()
+```
+
 ### 静态方法
 ####  1.发送文件  async sendFile(fileDir, toUserName, mediaId, streamInfo = {})
 
