@@ -1,9 +1,19 @@
-import NodeWeChat, { sendFile, sendImage, sendVideo, sendTextMsg, revokeMsg, EMIT_NAME, MESSAGE_TYPE } from './src';
+import NodeWeChat, {
+    sendFile,
+    sendImage,
+    sendVideo,
+    sendTextMsg,
+    revokeMsg,
+    EMIT_NAME,
+    MESSAGE_TYPE,
+    createChatRoom
+} from './src';
 import { uploadFile } from "./src/Message";
+import GlobalInfo from "./src/GlobalInfo";
 
 
 const NodeWeChatIns = new NodeWeChat();
-// NodeWeChatIns.run();
+
 // const arr = [
 //     MESSAGE_TYPE.TEXT,
 //     MESSAGE_TYPE.PICTURE,
@@ -73,7 +83,7 @@ var fn = async () => {
     // const { MsgID, LocalID } = await sendFile('./txt.txt')
     //
     //
-    // const stream = fs.createReadStream('./111.mp4');
+    // const stream = fs.createReadStream('./file/game.zip');
     //
     // const streamInfo = {
     //     fileReadStream: stream,
@@ -89,64 +99,22 @@ var fn = async () => {
 
     // console.log(NodeWeChatIns.getUserInfoByName('比都个是还不你了对NIAN'))
 
-    const userInfo = NodeWeChatIns.getContactInfoByName('Kobe Zhang');
+    // const userInfo1 = NodeWeChatIns.getContactInfoByName(['阿东','阿贵']);
+    const userInfo1 = NodeWeChatIns.getContactInfoByName('Kobe Zhang');
+    const userInfo2 = NodeWeChatIns.getContactInfoByName('BBB');
 
-    // console.log(userInfo)
-    try {
-        const res = await  sendFile('./tt.png', userInfo.UserName)
-        console.log(res)
-    } catch (e) {
-        console.log('err', e)
-    }
+    // console.log(userInfo1)
+    // console.log(userInfo2)
 
-    // const ss = await uploadChunksssss({
-    //     fileDir: './tt.png'
-    // })
-    // console.log(ss,'============')
+    const res = await  NodeWeChatIns.addMemberIntoChatRoom(userInfo2.UserName,[userInfo1],true);
+
+
+    console.log(res)
+
 
 }
-
+// NodeWeChatIns.run();
 fn()
-
-const prepareFile = (fileDir, fileStream) => {
-    return new Promise((resolve) => {
-        if (!fileDir && !fileStream) {
-            resolve(null);
-        }
-
-        const stream = fileStream || fs.createReadStream(fileDir);
-        const bufferArr = [];
-        let fileSize = 0;
-
-        stream.on('data', function (chunk) {
-
-            bufferArr.push(chunk);
-            fileSize += chunk.length;
-        });
-        stream.on('end', function () {
-
-            const buffer = Buffer.concat(bufferArr);
-
-            const chunks = Math.floor((fileSize - 1) / 524288) + 1;
-            console.log(chunks);
-
-            const bufferArr111 = Array.from({ length: chunks }).map((v, index) => {
-                return buffer.slice(index * 524288, (index + 1) * 524288)
-            });
-
-            const temp = Buffer.concat(bufferArr111)
-
-
-            console.log(temp.length, buffer.length, fileSize, bufferArr111.length, bufferArr111)
-
-            resolve({ buffer: bufferArr111, fileSize })
-        });
-        stream.on('err', err => {
-
-            resolve(null);
-        });
-    })
-};
 
 
 

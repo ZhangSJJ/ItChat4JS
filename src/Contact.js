@@ -6,7 +6,7 @@ import { deepClone, getUrlDomain, isArray } from "./Utils";
 import Fetch from "./Fetch";
 import { structFriendInfo, updateInfoDict } from "./ConvertData";
 import GlobalInfo from './GlobalInfo';
-import { LogDebug } from "./Log";
+import { LogDebug, LogError } from "./Log";
 
 export default class Contact {
     constructor() {
@@ -33,6 +33,7 @@ export default class Contact {
             }
         };
         await batchFetchContact()
+
         const chatRoomArr = [], otherList = [];
         tempMemberList.forEach(item => {
             if (item.Sex !== 0) {
@@ -47,38 +48,67 @@ export default class Contact {
         if (!!chatRoomArr.length) {
             this.updateLocalChatRoom(chatRoomArr)
         }
-
         if (!!otherList.length) {
             this.updateLocalFriends(otherList)
         }
-
         return deepClone(chatRoomArr);
 
     }
 
     getChatRoomInfo(chatRoomUserName) {
-        return this.chatRoomList.find(i => i.UserName === chatRoomUserName);
+        const nameIsArray = isArray(chatRoomUserName);
+        if (!nameIsArray) {
+            chatRoomUserName = [chatRoomUserName]
+        }
+        const filterRet = this.chatRoomList.filter(i => chatRoomUserName.indexOf(i.UserName) !== -1);
+        if (nameIsArray) {
+            return filterRet;
+        }
+
+        return filterRet[0];
     }
 
     getFriendInfo(userName) {
-        return this.memberList.find(i => i.UserName === userName);
+        const nameIsArray = isArray(userName);
+        if (!nameIsArray) {
+            userName = [userName]
+        }
+        const filterRet = this.memberList.filter(i => userName.indexOf(i.UserName) !== -1);
+        if (nameIsArray) {
+            return filterRet;
+        }
+        return filterRet[0];
     }
 
     getMpInfo(userName) {
-        return this.mpList.find(i => i.UserName === userName);
+        const nameIsArray = isArray(userName);
+        if (!nameIsArray) {
+            userName = [userName]
+        }
+        const filterRet = this.mpList.filter(i => userName.indexOf(i.UserName) !== -1);
+        if (nameIsArray) {
+            return filterRet;
+        }
+        return filterRet[0];
     }
 
     /**
      * 在所有的list中查找成员
+     * 可以通过UserName，NickName，RemarkName 获取好友信息
+     * @param name
+     * @returns {*}
      */
-    getUserInfo(userName) {
-        const fullContact = this.chatRoomList.concat(this.memberList).concat(this.mpList);
-        return fullContact.find(i => i.UserName === userName);
-    }
-
     getContactInfoByName(name) {
+        const nameIsArray = isArray(name);
+        if (!nameIsArray) {
+            name = [name]
+        }
         const fullContact = this.chatRoomList.concat(this.memberList).concat(this.mpList);
-        return fullContact.find(i => i.UserName === name || i.NickName === name || i.RemarkName === name);
+        const filterRet = fullContact.filter(i => name.indexOf(i.UserName) !== -1 || name.indexOf(i.NickName) !== -1 || name.indexOf(i.RemarkName) !== -1);
+        if (nameIsArray) {
+            return filterRet;
+        }
+        return filterRet[0];
     }
 
     async updateChatRoomInfo(userName) {
@@ -95,11 +125,14 @@ export default class Contact {
                 cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         };
-
         const res = await Fetch(url, params);
         if (res.BaseResponse && res.BaseResponse.Ret === 0) {
             this.updateLocalChatRoom(res.ContactList);
         }
+
+        const chatRoomInfoArr = this.getChatRoomInfo(res.ContactList.map(i => i.UserName));
+
+        return chatRoomInfoArr.length > 1 ? chatRoomInfoArr : chatRoomInfoArr[0]
     }
 
     async updateFriendInfo(userName) {
@@ -134,6 +167,9 @@ export default class Contact {
 
     updateLocalChatRoom(roomList = []) {
         roomList.forEach(chatRoom => {
+            if (!chatRoom['UserName']) {
+                return;
+            }
             let oldChatRoom = this.chatRoomList.find(i => i.UserName === chatRoom['UserName']);
             //更新chatRoom的信息（除了MemberList）
             if (oldChatRoom) {
@@ -231,7 +267,7 @@ export default class Contact {
                     if (username.indexOf('@') === -1) {
                         return;
                     }
-                    const userInfo = this.getUserInfo(username);
+                    const userInfo = this.getContactInfoByName(username);
                     if (userInfo) {
                         if ((userInfo['Uin'] || 0) === 0) {
                             userInfo['Uin'] = uin;
@@ -242,7 +278,7 @@ export default class Contact {
                         }
                     } else {
                         if (username.indexOf('@@') !== -1) {
-                            await updateChatRoomInfo(username);
+                            await this.updateChatRoomInfo(username);
                             let newChatRoomInfo = this.getChatRoomInfo(username);
                             if (!newChatRoomInfo) {
                                 newChatRoomInfo = structFriendInfo({
@@ -258,7 +294,7 @@ export default class Contact {
                             await this.updateFriendInfo(username)
                             let newFriendInfo = this.getFriendInfo(username);
                             if (!newFriendInfo) {
-                                newFriendInfo.structFriendInfo({
+                                newFriendInfo = structFriendInfo({
                                     'UserName': username,
                                     'Uin': uin,
                                 });
@@ -322,7 +358,182 @@ export default class Contact {
             await this.updateFriendInfo(userName)
         }
         return res;
+    }
+
+
+    /**
+     * 设置别名(好友)
+     * @param userName
+     * @param alias
+     * @returns {Promise.<void>}
+     */
+    async setAlias(userName, alias = '') {
+        const oldFriendInfo = this.getFriendInfo(userName);
+        if (!oldFriendInfo) {
+            LogError('You Do Not Have A Friend Named :' + userName);
+            return;
+        }
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxoplog?lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const params = {
+            method: 'post',
+            UserName: userName,
+            CmdId: 2,
+            RemarkName: alias,
+            BaseRequest: GlobalInfo.BaseRequest,
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+            }
+        };
+
+        return await Fetch(url, params);
+    }
+
+    /**
+     * 置顶好友
+     * @param userName
+     * @param isPinned
+     * @returns {Promise.<*>}
+     */
+    async setPinned(userName, isPinned = true) {
+        const oldFriendInfo = this.getContactInfoByName(userName);
+        if (!oldFriendInfo) {
+            LogError('You Do Not Have A Friend, Chat Room Or Massive Platform Named :' + userName);
+            return;
+        }
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxoplog?pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const params = {
+            method: 'post',
+            UserName: userName,
+            CmdId: 3,
+            OP: +isPinned,
+            BaseRequest: GlobalInfo.BaseRequest,
+            RemarkName: oldFriendInfo.RemarkName,
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+            }
+        };
+        return await Fetch(url, params);
+    }
+
+
+    /**
+     * 创建群聊
+     * @param memberList
+     * @param topic
+     * @returns {Promise.<*>}
+     */
+    async createChatRoom(memberList, topic = '') {
+        if (!memberList || !memberList.length) {
+            LogError('None Member To Add To Create A ChatRoom!');
+            return;
+        }
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxcreatechatroom?pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}&r=${Date.now()}`;
+        const params = {
+            method: 'post',
+            BaseRequest: GlobalInfo.BaseRequest,
+            MemberCount: memberList.length,
+            MemberList: memberList.map(member => ({ UserName: member['UserName'] })),
+            Topic: topic,
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+            }
+        };
+        return await Fetch(url, params);
     };
 
+    async setChatRoomName(chatRoomUserName, name) {
+        const oldChatRoomInfo = this.getChatRoomInfo(chatRoomUserName);
+        if (!oldChatRoomInfo) {
+            LogError('You Are Not In A Chat Room Named :' + chatRoomUserName);
+            return;
+        }
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxupdatechatroom?fun=modtopic&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const params = {
+            method: 'post',
+            BaseRequest: GlobalInfo.BaseRequest,
+            ChatRoomName: chatRoomUserName,
+            NewTopic: name,
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+            }
+        };
+        return await Fetch(url, params);
+    }
+
+    /**
+     * todo 删除群成员总是返回Ret：1不成功（网页版也不成功）
+     * @param chatRoomUserName
+     * @param memberList
+     * @returns {Promise.<*>}
+     */
+    async deleteMemberFromChatRoom(chatRoomUserName, memberList) {
+        if (!isArray(memberList)) {
+            memberList = [memberList];
+        }
+        const oldChatRoomInfo = this.getChatRoomInfo(chatRoomUserName);
+        if (!oldChatRoomInfo) {
+            LogError('You Are Not In A Chat Room Named :' + chatRoomUserName);
+            return;
+        }
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxupdatechatroom?fun=delmember&lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const params = {
+            method: 'post',
+            BaseRequest: GlobalInfo.BaseRequest,
+            ChatRoomName: chatRoomUserName,
+            DelMemberList: memberList.map(member => member['UserName']).join(','),
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+            }
+        };
+
+        console.log(url, '==============')
+        console.log(params, '==============')
+
+        return await Fetch(url, params);
+    }
+
+    /**
+     * add or invite member into chatroom
+     * there are two ways to get members into chatroom: invite or directly add
+     * but for chatrooms with more than 40 users, you can only use invite
+     * but don't worry we will auto-force userInvitation for you when necessary
+     * @param chatRoomUserName
+     * @param memberList
+     * @param useInvitation
+     */
+    async addMemberIntoChatRoom(chatRoomUserName, memberList, useInvitation = false) {
+
+        if (!useInvitation) {
+            let oldChatRoomInfo = this.getChatRoomInfo(chatRoomUserName);
+            if (!oldChatRoomInfo) {
+                oldChatRoomInfo = this.updateChatRoomInfo(chatRoomUserName);
+                if (!oldChatRoomInfo) {
+                    LogError('You Are Not In A Chat Room Named :' + chatRoomUserName);
+                    return;
+                }
+                useInvitation = oldChatRoomInfo['MemberList'].length > GlobalInfo.LOGIN_INFO['InviteStartCount']
+            }
+        }
+
+        let fun = 'addmember', memberKeyName = 'AddMemberList';
+        if (useInvitation) {
+            fun = 'invitemember';
+            memberKeyName = 'InviteMemberList';
+        }
+
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxupdatechatroom?fun=${fun}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const params = {
+            method: 'post',
+            BaseRequest: GlobalInfo.BaseRequest,
+            ChatRoomName: chatRoomUserName,
+            [memberKeyName]: memberList.map(member => member['UserName']).join(','),
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
+            }
+        };
+
+        return await Fetch(url, params);
+    }
 
 }
+

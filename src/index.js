@@ -26,25 +26,32 @@ class NodeWeChat extends EventEmitter {
 
     init() {
         this.contactIns = new Contact();
-        this.getChatRoomInfo = this.contactIns.getChatRoomInfo.bind(this.contactIns);
-        this.updateChatRoomInfo = this.contactIns.updateChatRoomInfo.bind(this.contactIns);
-        this.getFriendInfo = this.contactIns.getFriendInfo.bind(this.contactIns);
-        this.getMpInfo = this.contactIns.getMpInfo.bind(this.contactIns);
-        this.updateLocalUin = this.contactIns.updateLocalUin.bind(this.contactIns);
+        const getChatRoomInfo = this.contactIns.getChatRoomInfo.bind(this.contactIns);
+        const updateChatRoomInfo = this.contactIns.updateChatRoomInfo.bind(this.contactIns);
+        const getFriendInfo = this.contactIns.getFriendInfo.bind(this.contactIns);
+        const getMpInfo = this.contactIns.getMpInfo.bind(this.contactIns);
+        const updateLocalUin = this.contactIns.updateLocalUin.bind(this.contactIns);
 
 
         this.messageIns = new Message({
             on: this.on,
             emit: this.emit,
-            getChatRoomInfo: this.getChatRoomInfo,
-            updateChatRoomInfo: this.updateChatRoomInfo,
-            getFriendInfo: this.getFriendInfo,
-            getMpInfo: this.getMpInfo,
-            updateLocalUin: this.updateLocalUin,
+            getChatRoomInfo,
+            updateChatRoomInfo,
+            getFriendInfo,
+            getMpInfo,
+            updateLocalUin,
         });
 
         this.verifyFriend = this.contactIns.verifyFriend.bind(this.contactIns);
         this.getContactInfoByName = this.contactIns.getContactInfoByName.bind(this.contactIns);
+        this.setAlias = this.contactIns.setAlias.bind(this.contactIns);
+        this.setPinned = this.contactIns.setPinned.bind(this.contactIns);
+        this.createChatRoom = this.contactIns.createChatRoom.bind(this.contactIns);
+        this.setChatRoomName = this.contactIns.setChatRoomName.bind(this.contactIns);
+        this.deleteMemberFromChatRoom = this.contactIns.deleteMemberFromChatRoom.bind(this.contactIns);
+        this.addMemberIntoChatRoom = this.contactIns.addMemberIntoChatRoom.bind(this.contactIns);
+
 
     }
 
