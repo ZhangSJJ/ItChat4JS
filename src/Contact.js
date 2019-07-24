@@ -60,7 +60,7 @@ export default class Contact {
         if (!nameIsArray) {
             chatRoomUserName = [chatRoomUserName]
         }
-        const filterRet = this.chatRoomList.filter(i => chatRoomUserName.indexOf(i.UserName) !== -1);
+        const filterRet = this.chatRoomList.filter(i => chatRoomUserName.indexOf(i.UserName) !== -1 || chatRoomUserName.indexOf(i.NickName) !== -1 || chatRoomUserName.indexOf(i.RemarkName) !== -1);
         if (nameIsArray) {
             return filterRet;
         }
@@ -73,7 +73,7 @@ export default class Contact {
         if (!nameIsArray) {
             userName = [userName]
         }
-        const filterRet = this.memberList.filter(i => userName.indexOf(i.UserName) !== -1);
+        const filterRet = this.memberList.filter(i => userName.indexOf(i.UserName) !== -1 || userName.indexOf(i.NickName) !== -1 || userName.indexOf(i.RemarkName) !== -1);
         if (nameIsArray) {
             return filterRet;
         }
@@ -85,7 +85,7 @@ export default class Contact {
         if (!nameIsArray) {
             userName = [userName]
         }
-        const filterRet = this.mpList.filter(i => userName.indexOf(i.UserName) !== -1);
+        const filterRet = this.mpList.filter(i => userName.indexOf(i.UserName) !== -1 || userName.indexOf(i.NickName) !== -1 || userName.indexOf(i.RemarkName) !== -1);
         if (nameIsArray) {
             return filterRet;
         }
