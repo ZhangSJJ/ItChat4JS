@@ -1,6 +1,6 @@
 {
   "name": "itchat4js",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "wechat itchat api robot weixin personal extend",
   "main": "./lib/index.js",
   "scripts": {
@@ -15,16 +15,16 @@
     "form-data": "^2.5.0",
     "log4js": "^4.4.0",
     "node-fetch": "^2.6.0",
-    "querystring": "^0.2.0"
-  },
-  "devDependencies": {
+    "querystring": "^0.2.0",
     "@babel/cli": "^7.4.4",
     "@babel/core": "^7.4.4",
     "@babel/plugin-transform-modules-commonjs": "^7.4.4",
     "@babel/plugin-transform-runtime": "^7.4.4",
     "@babel/preset-env": "^7.4.4",
     "@babel/runtime": "^7.4.4",
-    "babel-loader": "^8.0.6",
+    "babel-loader": "^8.0.6"
+  },
+  "devDependencies": {
     "clean-webpack-plugin": "^2.0.2",
     "webpack": "^4.31.0",
     "webpack-cli": "^3.3.2"
