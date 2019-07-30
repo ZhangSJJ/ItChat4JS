@@ -100,21 +100,25 @@ var fn = async () => {
     // console.log(NodeWeChatIns.getUserInfoByName('比都个是还不你了对NIAN'))
 
     // const userInfo1 = NodeWeChatIns.getContactInfoByName(['阿东','阿贵']);
-    const userInfo1 = NodeWeChatIns.getContactInfoByName('Kobe Zhang');
-    const userInfo2 = NodeWeChatIns.getContactInfoByName('BBB');
+    // const userInfo1 = NodeWeChatIns.getContactInfoByName('Kobe Zhang');
+    // const userInfo2 = NodeWeChatIns.getContactInfoByName('BBB');
 
     // console.log(userInfo1)
     // console.log(userInfo2)
 
-    const res = await  NodeWeChatIns.addMemberIntoChatRoom(userInfo2.UserName,[userInfo1],true);
+    // const res = await  NodeWeChatIns.addMemberIntoChatRoom(userInfo2.UserName,[userInfo1],true);
+    //
+    //
+    // console.log(res)
 
 
-    console.log(res)
+        await NodeWeChatIns.login();
+        // sendFile('./20190725192103.png')
 
 
 }
-// NodeWeChatIns.run();
-fn()
+NodeWeChatIns.run();
+// fn()
 
 
 

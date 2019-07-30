@@ -24,6 +24,7 @@ const LOGIN_INFO = {
     logintime: '',
     fileUrl: '',
     syncUrl: '',
+    userId: '',
 
     skey: '',
     wxsid: '',

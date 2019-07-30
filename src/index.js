@@ -78,6 +78,26 @@ class NodeWeChat extends EventEmitter {
         console.log('Please scan the QR code to log in.')
     };
 
+    async webWxPushLogin() {
+        if (!GlobalInfo.LOGIN_INFO.loginUrl || !GlobalInfo.LOGIN_INFO.wxuin) {
+            return false;
+        }
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxpushloginurl?uin=${GlobalInfo.LOGIN_INFO.wxuin}`;
+
+        const pushLoginRes = await Fetch(url, {
+            headers: {
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(GlobalInfo.LOGIN_INFO.loginUrl))
+            }
+        });
+        LogDebug('WeChat Push Login Request Result:' + pushLoginRes.msg);
+
+        if (pushLoginRes.ret === '0') {
+            GlobalInfo.LOGIN_INFO.userId = pushLoginRes.uuid;
+        }
+
+        return pushLoginRes.ret === '0';
+    };
+
     async checkUserLogin(userId) {
         const now = Date.now();
         const url = `${GlobalInfo.BASE_URL}/cgi-bin/mmwebwx-bin/login`;
@@ -178,7 +198,11 @@ class NodeWeChat extends EventEmitter {
             if (selector === '0') {
                 return;
             }
-            const { msgList, contactList } = await this.getMsg();
+            const msgInfo = await this.getMsg();
+            if (!msgInfo) {
+                return;
+            }
+            const { msgList, contactList } = msgInfo;
             this.messageIns.produceMsg(msgList)
         };
 
@@ -321,16 +345,20 @@ class NodeWeChat extends EventEmitter {
     async login(receiving = false) {
         this.autoReceiving = receiving;
         await readAndMergeGlobalInfo();
+
+
         const isLogin = await this.showMobileLogin();
         if (isLogin) {
             await this.contactIns.getContact(true);
             this.startReceiving();
         } else {
-            const userId = await this.getUserId();
-            this.drawQRImage(userId);
-
+            //首先唤起手机微信网页登陆
+            if (!await this.webWxPushLogin()) {
+                GlobalInfo.LOGIN_INFO.userId = await this.getUserId();
+                this.drawQRImage(GlobalInfo.LOGIN_INFO.userId);
+            }
             this.loginWhileDoing = new WhileDoing(async () => {
-                await this.checkUserLogin(userId);
+                await this.checkUserLogin(GlobalInfo.LOGIN_INFO.userId);
             });
             await this.loginWhileDoing.start();
         }
