@@ -294,7 +294,9 @@ export default class Message {
             type: msg['Type'],
             text: msg['Text'],
             filename: msg['FileName'],
-            download: msg['Download']
+            download: msg['Download'],
+            content: msg['Content'],
+            oriContent: msg['OriContent']
         };
         if (emitName === GlobalInfo.EMIT_NAME.CHAT_ROOM) {
             retReply = {
@@ -304,7 +306,7 @@ export default class Message {
             }
         }
 
-        emitName && this.emit(emitName, retReply, messageFrom)
+        emitName && this.emit(emitName, retReply, msg['User'] || { UserName: messageFrom })
     }
 
 }
@@ -319,7 +321,7 @@ export default class Message {
  */
 
 const downloadFile = (url, msgId, filename, isVideo = false) => {
-    return (path, name) => {
+    return (path, name, buffer = false) => {
         path = path || '';
         name = name || filename;
         const params = {
@@ -339,6 +341,13 @@ const downloadFile = (url, msgId, filename, isVideo = false) => {
 
         return new Promise(resolve => {
             Fetch(url, params).then(data => {
+                if (buffer) {
+                    if (data instanceof Uint8Array) {
+                        data = Buffer.from(data);
+                    }
+                    resolve(data);
+                    return;
+                }
                 fs.writeFile(realPath + name, data, function (err) {
                     if (err) {
                         LogError('File Download Error:' + err);
@@ -354,7 +363,7 @@ const downloadFile = (url, msgId, filename, isVideo = false) => {
 
 
 const downloadAttachment = (url, msg, filename) => {
-    return (path, name) => {
+    return (path, name, buffer = false) => {
         path = path || '';
         name = name || filename;
         const webwxDataTicket = GlobalInfo.LOGIN_INFO.cookies.getValue('webwx_data_ticket', getUrlDomain(url));
@@ -378,6 +387,13 @@ const downloadAttachment = (url, msg, filename) => {
 
         return new Promise(resolve => {
             Fetch(url, params).then(data => {
+                if (buffer) {
+                    if (data instanceof Uint8Array) {
+                        data = Buffer.from(data);
+                    }
+                    resolve(data);
+                    return;
+                }
                 fs.writeFile(realPath + name, data, function (err) {
                     if (err) {
                         LogError('File Download Error:' + err);
@@ -407,8 +423,7 @@ const makeDirs = (pathStr) => {
         }
         if (pathTemp) {
             pathTemp = path.join(pathTemp, dirName);
-        }
-        else {
+        } else {
             pathTemp = dirName;
         }
         if (!fs.existsSync(pathTemp)) {
@@ -497,6 +512,7 @@ export const sendImage = async (fileDir, toUserName = 'filehelper', mediaId, str
     LogDebug(`Request to send a image(mediaId: ${mediaId}) to ${toUserName}: ${fileDir}`);
     const { fileReadStream, extName } = streamInfo;
     const preparedFile = await prepareFile(fileDir, fileReadStream);
+
     if (!preparedFile) {
         LogError('File Analysis Failed...');
         return;
@@ -541,6 +557,37 @@ export const sendVideo = async (fileDir, toUserName = 'filehelper', mediaId, str
     });
 };
 
+/**
+ * 转发消息(网页版只支持文本，图片，视频)
+ * @param content
+ * @param msgType
+ * @param toUserName
+ * @returns {Promise<*>}
+ */
+export const transmitMsg = async (content, msgType, toUserName) => {
+    let url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendmsg`, type;
+    if (msgType === GlobalInfo.MESSAGE_TYPE.TEXT) {
+        type = 1;
+    } else if (msgType === GlobalInfo.MESSAGE_TYPE.PICTURE) {
+        url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendmsgimg?fun=async&f=json`;
+        type = 3;
+    } else if (msgType === GlobalInfo.MESSAGE_TYPE.VIDEO) {
+        url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendvideomsg?fun=async&f=json&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        type = 43;
+    } else if (msgType === GlobalInfo.MESSAGE_TYPE.MAP) {
+        type = 48;
+    }
+    if (!!url && !!type) {
+        return sendMsg({
+            url,
+            msgType: type,
+            content,
+            toUserName
+        })
+    }
+    return Promise.resolve().then(() => ({ BaseResponse: { Ret: 1 } }));
+};
+
 export const revokeMsg = async (msgId, toUserName, localId) => {
     const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxrevokemsg`;
     const params = {
@@ -572,23 +619,34 @@ export const prepareFile = (fileDir, fileStream) => {
         }
         let md5sum = crypto.createHash('md5');
         const stream = fileStream || fs.createReadStream(fileDir);
-        const bufferArr = [];
-        let fileSize = 0;
 
-        stream.on('data', function (chunk) {
-            md5sum.update(chunk);
-            bufferArr.push(chunk);
-            fileSize += chunk.length;
-        });
-        stream.on('end', function () {
-            let fileMd5 = md5sum.digest('hex');
-            const buffer = Buffer.concat(bufferArr);
+        const handleData = (buffer) => {
+            const fileSize = buffer.length;
             const chunks = Math.floor((fileSize - 1) / 524288) + 1;
-            const retBufferArr = Array.from({ length: chunks }).map((v, index) => {
+            const bufferArr = Array.from({ length: chunks }).map((v, index) => {
                 return buffer.slice(index * 524288, (index + 1) * 524288)
             });
-            resolve({ fileMd5, bufferArr: retBufferArr, fileSize })
+            md5sum.update(buffer.toString());
+            const fileMd5 = md5sum.digest('hex');
+            return {
+                fileMd5, bufferArr, fileSize
+            };
+        };
 
+        if (fileStream instanceof Uint8Array) {
+            const buffer = Buffer.from(fileStream);
+            resolve(handleData(buffer));
+            return;
+        }
+
+        const bufferArr = [];
+
+        stream.on('data', function (chunk) {
+            bufferArr.push(chunk);
+        });
+        stream.on('end', function () {
+            const buffer = Buffer.concat(bufferArr);
+            resolve(handleData(buffer));
         });
         stream.on('err', err => {
             LogError('解析文件发生异常:' + err);

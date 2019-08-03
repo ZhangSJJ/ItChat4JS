@@ -11,7 +11,7 @@ import Cookies from './node-js-cookie';
 import ReturnValueFormat from './ReturnValueFormat';
 import { structFriendInfo } from "./ConvertData";
 import Contact from "./Contact";
-import Message, { sendFile, sendImage, sendVideo, sendTextMsg, revokeMsg } from './Message';
+import Message, { sendFile, sendImage, sendVideo, sendTextMsg, revokeMsg, transmitMsg } from './Message';
 import GlobalInfo from './GlobalInfo';
 import { readAndMergeGlobalInfo, saveGlobalInfo } from "./StoreGlobalInfo";
 import { LogDebug } from "./Log";
@@ -389,6 +389,7 @@ export {
     sendVideo,
     sendTextMsg,
     revokeMsg,
+    transmitMsg,
     EMIT_NAME,
     MESSAGE_TYPE
 }
