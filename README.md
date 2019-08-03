@@ -35,9 +35,10 @@ import ItChat4JS, { sendTextMsg, EMIT_NAME, MESSAGE_TYPE  } from 'itchat4js';
 
 const itChat4JsIns = new ItChat4JS();
 
-itChat4JsIns.listen(EMIT_NAME.FRIEND, MESSAGE_TYPE.TEXT, async (msgInfo, toUserName) => {
+itChat4JsIns.listen(EMIT_NAME.FRIEND, MESSAGE_TYPE.TEXT, async (msgInfo, toUserInfo) => {
     const { text } = msgInfo;
-    sendTextMsg(text, toUserName)
+    const { UserName } = toUserInfo;
+    sendTextMsg(text, UserName)
 });
 
 itChat4JsIns.run();
@@ -86,7 +87,7 @@ const msgArr = [
     MESSAGE_TYPE.VIDEO,
 ];
 
-itChat4JsIns.listen(EMIT_NAME.FRIEND, msgArr, async (msgInfo, toUserName) => {
+itChat4JsIns.listen(EMIT_NAME.FRIEND, msgArr, async (msgInfo, toUserInfo) => {
     const { text, type, download } = msgInfo;
     if (type === MESSAGE_TYPE.PICTURE) {
         await download('download/friend/image');
@@ -129,7 +130,7 @@ emitName：消息来源，参见EMIT_NAME
 msgType： 消息类型，MESSAGE_TYPE。可以是string也可以是Array，也可以undefined或null
 callback：处理消息的实际操作
 
-callback参数：msgInfo, toUserName
+callback参数：msgInfo, toUserInfo
 msgInfo：经过处理之后的消息信息，包含：
 text：文本内容
 type：消息信息
@@ -143,9 +144,10 @@ import ItChat4JS, { sendTextMsg, EMIT_NAME, MESSAGE_TYPE  } from 'itchat4js';
 
 const itChat4JsIns = new ItChat4JS();
 
-itChat4JsIns.listen(EMIT_NAME.FRIEND, MESSAGE_TYPE.TEXT, async (msgInfo, toUserName) => {
+itChat4JsIns.listen(EMIT_NAME.FRIEND, MESSAGE_TYPE.TEXT, async (msgInfo, toUserInfo) => {
     const { text } = msgInfo;
-    sendTextMsg(text, toUserName)
+    const { UserName } = toUserInfo;
+    sendTextMsg(text, UserName)
 });
 
 itChat4JsIns.run();
@@ -162,7 +164,7 @@ import ItChat4JS, { EMIT_NAME, MESSAGE_TYPE  } from 'itchat4js';
 
 const itChat4JsIns = new ItChat4JS();
 
-itChat4JsIns.listen(EMIT_NAME.FRIEND, MESSAGE_TYPE.FRIENDS, async (msgInfo, toUserName) => {
+itChat4JsIns.listen(EMIT_NAME.FRIEND, MESSAGE_TYPE.FRIENDS, async (msgInfo, toUserInfo) => {
     const { text } = msgInfo;
     const { status, verifyContent, autoUpdate: { UserName } } = text;
     itChat4JsIns.verifyFriend(UserName, status, verifyContent)
