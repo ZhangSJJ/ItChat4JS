@@ -486,9 +486,6 @@ export default class Contact {
             }
         };
 
-        console.log(url, '==============')
-        console.log(params, '==============')
-
         return await Fetch(url, params);
     }
 

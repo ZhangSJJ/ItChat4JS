@@ -4,7 +4,7 @@
 
 import EventEmitter from 'events';
 import parser from 'fast-xml-parser';
-import Fetch, { toBuffer, toJSON } from './Fetch';
+import Fetch, { FetchWithExcept, toBuffer, toJSON } from './Fetch';
 import { getUrlDomain, isArray, WhileDoing } from './Utils';
 import qrCode from './qrcode-terminal';
 import Cookies from './node-js-cookie';
@@ -14,7 +14,7 @@ import Contact from "./Contact";
 import Message, { sendFile, sendImage, sendVideo, sendTextMsg, revokeMsg, transmitMsg } from './Message';
 import GlobalInfo from './GlobalInfo';
 import { readAndMergeGlobalInfo, saveGlobalInfo } from "./StoreGlobalInfo";
-import { LogDebug } from "./Log";
+import { LogDebug, LogInfo } from "./Log";
 
 class NodeWeChat extends EventEmitter {
     constructor() {
@@ -83,7 +83,6 @@ class NodeWeChat extends EventEmitter {
             return false;
         }
         const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxpushloginurl?uin=${GlobalInfo.LOGIN_INFO.wxuin}`;
-
         const pushLoginRes = await Fetch(url, {
             headers: {
                 cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(GlobalInfo.LOGIN_INFO.loginUrl))
@@ -231,13 +230,17 @@ class NodeWeChat extends EventEmitter {
 
         GlobalInfo.LOGIN_INFO['logintime'] += 1;
 
-        const res = await Fetch(url, params);
+        const res = await FetchWithExcept(url, params, 'window.synccheck={retcode:"0",selector:"0"}');
         const bufferText = res.toString();
 
         const reg = /window.synccheck={retcode:"(\d+)",selector:"(\d+)"}/;
         const match = bufferText.match(reg);
+        if (match && match[1] === '1101') {
+            LogInfo('User Log Out...');
+            return process.exit(0);
+        }
         if (!match || match[1] !== '0') {
-            process.exit(0);
+            return '0';
         }
         return match[2];
     };

@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 import querystring from 'querystring'
 import GlobalInfo from "./GlobalInfo";
+import { LogError } from "./Log";
 
 const Fetch = (url, options = {}) => {
     const { headers, method = 'GET', json = true, buffer = false, formData = null, timeout, redirect = 'follow', ...restOptions } = options;
@@ -48,6 +49,22 @@ const Fetch = (url, options = {}) => {
 
 
     return fetchData
+};
+
+export const FetchWithExcept = (url, options = {}, exceptRet = {
+    BaseResponse: {
+        Ret: -1,
+        ErrMsg: 'request failed'
+    }
+}) => {
+    return new Promise(resolve => {
+        Fetch(url, options).then(res => {
+            resolve(res)
+        }).catch(e => {
+            LogError('Request Fail!' + JSON.stringify(e));
+            resolve(exceptRet)
+        })
+    })
 };
 
 function timeoutReject(promise, time = 0) {
