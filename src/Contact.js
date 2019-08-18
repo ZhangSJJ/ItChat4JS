@@ -99,11 +99,14 @@ export default class Contact {
      * @returns {*}
      */
     getContactInfoByName(name) {
+        const fullContact = this.chatRoomList.concat(this.memberList).concat(this.mpList);
+        if (!name) {
+            return fullContact;
+        }
         const nameIsArray = isArray(name);
         if (!nameIsArray) {
             name = [name]
         }
-        const fullContact = this.chatRoomList.concat(this.memberList).concat(this.mpList);
         const filterRet = fullContact.filter(i => name.indexOf(i.UserName) !== -1 || name.indexOf(i.NickName) !== -1 || name.indexOf(i.RemarkName) !== -1);
         if (nameIsArray) {
             return filterRet;
@@ -197,7 +200,7 @@ export default class Contact {
             const oldMemberList = oldChatRoom.MemberList || [];
             //更新MemberList信息（删除某些不存在的member）
             if (!!memberList.length && memberList.length !== oldMemberList.length) {
-                const existsUserNames = (memberList).map(i => i.UserName);
+                const existsUserNames = memberList.map(i => i.UserName);
                 oldMemberList.forEach(item => {
                     if (existsUserNames.indexOf(item.UserName) === -1) {
                         item.isDelete = true;
