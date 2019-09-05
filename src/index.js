@@ -5,7 +5,7 @@
 import EventEmitter from 'events';
 import parser from 'fast-xml-parser';
 import Fetch, { FetchWithExcept, toBuffer, toJSON } from './Fetch';
-import { getUrlDomain, isArray, WhileDoing } from './Utils';
+import { getDeviceID, getUrlDomain, isArray, WhileDoing } from './Utils';
 import qrCode from './qrcode-terminal';
 import Cookies from './node-js-cookie';
 import ReturnValueFormat from './ReturnValueFormat';
@@ -14,7 +14,7 @@ import Contact from "./Contact";
 import Message, { sendFile, sendImage, sendVideo, sendTextMsg, revokeMsg, transmitMsg } from './Message';
 import GlobalInfo from './GlobalInfo';
 import { readAndMergeGlobalInfo, saveGlobalInfo } from "./StoreGlobalInfo";
-import { LogDebug, LogInfo } from "./Log";
+import { LogError, LogInfo } from "./Log";
 
 class NodeWeChat extends EventEmitter {
     constructor() {
@@ -88,7 +88,7 @@ class NodeWeChat extends EventEmitter {
                 cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(GlobalInfo.LOGIN_INFO.loginUrl))
             }
         });
-        LogDebug('WeChat Push Login Request Result:' + pushLoginRes.msg);
+        LogInfo('WeChat Push Login Request Result:' + pushLoginRes.msg);
 
         if (pushLoginRes.ret === '0') {
             GlobalInfo.LOGIN_INFO.userId = pushLoginRes.uuid;
@@ -153,7 +153,7 @@ class NodeWeChat extends EventEmitter {
             ["wechat.com", ["file.web.wechat.com", "webpush.web.wechat.com"]]
         ];
 
-        GlobalInfo.LOGIN_INFO['deviceid'] = 'e' + ((Math.random() + '').substring(2, 17));
+        GlobalInfo.LOGIN_INFO['deviceid'] = getDeviceID();
         GlobalInfo.LOGIN_INFO['logintime'] = Date.now();
 
         urlInfo.forEach(([indexUrl, [fileUrl, syncUrl]]) => {
@@ -193,7 +193,7 @@ class NodeWeChat extends EventEmitter {
         }
         const doingFn = async () => {
             const selector = await this.syncCheck();
-            LogDebug('selector: ' + selector);
+            LogInfo('selector: ' + selector);
             if (selector === '0') {
                 return;
             }
@@ -208,7 +208,6 @@ class NodeWeChat extends EventEmitter {
         this.getMsgWhileDoing = new WhileDoing(doingFn, 3000);
         this.getMsgWhileDoing.start();
 
-
     };
 
     async syncCheck() {
@@ -218,7 +217,7 @@ class NodeWeChat extends EventEmitter {
             skey: GlobalInfo.LOGIN_INFO['skey'],
             sid: GlobalInfo.LOGIN_INFO['wxsid'],
             uin: GlobalInfo.LOGIN_INFO['wxuin'],
-            deviceid: GlobalInfo.LOGIN_INFO['deviceid'],
+            deviceid: getDeviceID(),
             synckey: GlobalInfo.LOGIN_INFO.syncKeyStr,
             _: GlobalInfo.LOGIN_INFO['logintime'],
             json: false,
@@ -235,25 +234,38 @@ class NodeWeChat extends EventEmitter {
 
         const reg = /window.synccheck={retcode:"(\d+)",selector:"(\d+)"}/;
         const match = bufferText.match(reg);
-        if (match && match[1] === '1101') {
-            LogInfo('User Log Out...');
-            return process.exit(0);
+
+        if (match) {
+            if (match[1] === '0') {
+                return match[2];
+            } else {
+
+            }
         }
-        if (!match || match[1] !== '0') {
+
+
+        if (match && match[1] === '0') {
+            return match[2];
+        }
+
+        if (!match || ['1100', '1101', '1102'].indexOf(match[1]) === -1) {
+            LogError('SyncCheck Net Error...' + (match ? match[1] : ''));
             return '0';
         }
-        return match[2];
+
+        LogInfo('User Log Out...' + match[1]);
+        return process.exit(0);
     };
 
     async getMsg() {
-        LogDebug('Getting Message...');
+        LogInfo('Getting Message...');
         const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsync?sid=${GlobalInfo.LOGIN_INFO.wxsid}&skey=${GlobalInfo.LOGIN_INFO.skey}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             BaseRequest: GlobalInfo.BaseRequest,
             method: 'post',
             json: false,//为了拿headers更新cookie
             SyncKey: GlobalInfo.LOGIN_INFO.syncKey,
-            rr: ~Date.now(),
+            rr: ~new Date(),
             headers: {
                 cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
