@@ -273,8 +273,10 @@ class NodeWeChat extends EventEmitter {
 
         let res = await FetchWithExcept(url, params, { BaseResponse: { Ret: -1 } });
         //更新cookie
-        const cookieArr = (res.headers.raw() || {})['set-cookie'];
-        GlobalInfo.LOGIN_INFO.cookies.updateCookies(cookieArr);
+        if (res.headers && res.headers.raw && (typeof res.headers.raw) === 'function') {
+            const cookieArr = (res.headers.raw() || {})['set-cookie'];
+            GlobalInfo.LOGIN_INFO.cookies.updateCookies(cookieArr);
+        }
 
         res = await toJSON(res);
 
