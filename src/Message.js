@@ -14,7 +14,7 @@ import { convertDate, getUrlDomain, msgFormatter } from "./Utils";
 import Fetch from './Fetch';
 import GlobalInfo from './GlobalInfo';
 import { structFriendInfo } from "./ConvertData";
-import { LogDebug, LogError } from "./Log";
+import { LogInfo, LogError } from "./Log";
 
 const FILENAME_WITH_NO_DIR = 'TEMP-FILENAME';
 
@@ -68,7 +68,7 @@ export default class Message {
             member = (chatRoom.MemberList || []).find(i => i.UserName === actualUserName);
         }
         if (!member) {
-            LogDebug('Chat Room Member Fetch Failed With ' + actualUserName);
+            LogInfo('Chat Room Member Fetch Failed With ' + actualUserName);
             msg['ActualNickName'] = '';
             msg['IsAt'] = false;
         } else {
@@ -129,13 +129,13 @@ export default class Message {
                             Type: 'Map',
                             Text: data,
                         };
-                        LogDebug('Map...');
+                        LogInfo('Map...');
                     } else {
                         msgInfo = {
                             Type: 'Text',
                             Text: msg['Content']
                         };
-                        LogDebug('Text...');
+                        LogInfo('Text...');
                     }
                 } else if (msg['MsgType'] === 3 || msg['MsgType'] === 47) {//picture
                     const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetmsgimg`;
@@ -146,7 +146,7 @@ export default class Message {
                         FileName: filename,
                         Download: downloadFileFn,
                     };
-                    LogDebug('Picture...111');//todo .gif download failed
+                    LogInfo('Picture...111');//todo .gif download failed
                 } else if (msg['MsgType'] === 34) {//voice
                     const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetvoice`;
                     const filename = convertDate().replace(/-|:|\s/g, '') + '.mp3';
@@ -156,7 +156,7 @@ export default class Message {
                         FileName: filename,
                         Download: downloadFileFn,
                     };
-                    LogDebug('Voice...');
+                    LogInfo('Voice...');
                 } else if (msg['MsgType'] === 37) {//friends
                     msg['User']['UserName'] = msg['RecommendInfo']['UserName'];
                     msgInfo = {
@@ -169,13 +169,13 @@ export default class Message {
                         },
                     };
                     msg['User'].verifyDict = msgInfo['Text'];
-                    LogDebug('Add Friend Apply...');
+                    LogInfo('Add Friend Apply...');
                 } else if (msg['MsgType'] === 42) {//name card
                     msgInfo = {
                         Type: 'Card',
                         Text: msg['RecommendInfo']
                     };
-                    LogDebug('Name Card...');
+                    LogInfo('Name Card...');
                 } else if ([43, 62].indexOf(msg['MsgType']) !== -1) {//tiny video
                     const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetvideo`;
                     const filename = convertDate().replace(/-|:|\s/g, '') + '.mp4';
@@ -187,14 +187,14 @@ export default class Message {
                         Download: downloadFileFn,
                     };
 
-                    LogDebug('Video...');
+                    LogInfo('Video...');
                 } else if (msg['MsgType'] === 49) {//sharing
                     if (msg['AppMsgType'] === 0) {//chat history
                         msgInfo = {
                             Type: 'Note',
                             Text: msg['Content']
                         };
-                        LogDebug('Chat History...')
+                        LogInfo('Chat History...')
                     } else if (msg['AppMsgType'] === 6) {
                         const url = `${GlobalInfo.LOGIN_INFO.fileUrl}/webwxgetmedia`;
                         const filename = msg.FileName || convertDate().replace(/-|:|\s/g, '');
@@ -204,7 +204,7 @@ export default class Message {
                             FileName: filename,
                             Download: downloadFileFn,
                         };
-                        LogDebug('Attachment...')
+                        LogInfo('Attachment...')
                     } else if (msg['AppMsgType'] === 8) {
                         const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetmsgimg`;
                         const filename = convertDate().replace(/-|:|\s/g, '') + '.gif';
@@ -215,13 +215,13 @@ export default class Message {
                             Download: downloadFileFn,
                         };
 
-                        LogDebug('Picture...222');
+                        LogInfo('Picture...222');
                     } else if (msg['AppMsgType'] === 17) {
                         msgInfo = {
                             Type: 'Note',
                             FileName: msg['FileName'],
                         };
-                        LogDebug('Note...');
+                        LogInfo('Note...');
                     } else if (msg['AppMsgType'] === 2000) {
                         const reg = '\[CDATA\[(.+?)\][\s\S]+?\[CDATA\[(.+?)\]';
                         const match = (msg.Content || '').match(reg);
@@ -234,7 +234,7 @@ export default class Message {
                             Type: 'Note',
                             Text: text,
                         };
-                        LogDebug('Note...');
+                        LogInfo('Note...');
                     } else {
                         msgInfo = {
                             Type: 'Sharing',
@@ -267,7 +267,7 @@ export default class Message {
                     };
 
                 } else {
-                    LogDebug(`Useless message received:${msg['MsgType']}\n${JSON.stringify(msg)}`);
+                    LogInfo(`Useless message received:${msg['MsgType']}\n${JSON.stringify(msg)}`);
                     msgInfo = {
                         Type: 'Useless',
                         Text: 'UselessMsg',
@@ -279,7 +279,7 @@ export default class Message {
 
                 this.reply(msg);
 
-                // LogDebug(msg['User'].myDefinedUserType + ',' + msg['MsgType'] + ',' + JSON.stringify(msgInfo))
+                // LogInfo(msg['User'].myDefinedUserType + ',' + msg['MsgType'] + ',' + JSON.stringify(msgInfo))
 
             }
         );
@@ -463,14 +463,14 @@ const sendMsg = async ({ url, msgType, content, toUserName = 'filehelper', media
     }
 
     const res = await Fetch(url, params);
-    LogDebug(res);
+    LogInfo(res);
     return res;
 };
 
 
 export const sendTextMsg = async (msg, toUserName) => {
     const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendmsg`;
-    LogDebug('Request to send a text message to ' + toUserName + ': ' + msg);
+    LogInfo('Request to send a text message to ' + toUserName + ': ' + msg);
     return await sendMsg({
         url, msgType: 1, content: msg, toUserName
     })
@@ -478,7 +478,7 @@ export const sendTextMsg = async (msg, toUserName) => {
 };
 
 export const sendFile = async (fileDir, toUserName = 'filehelper', mediaId, streamInfo = {}) => {
-    LogDebug(`Request to send a file(mediaId: ${mediaId}) to ${toUserName}: ${fileDir}`);
+    LogInfo(`Request to send a file(mediaId: ${mediaId}) to ${toUserName}: ${fileDir}`);
     let { fileReadStream, filename, extName } = streamInfo;
     const preparedFile = await prepareFile(fileDir, fileReadStream);
     if (!preparedFile) {
@@ -509,7 +509,7 @@ export const sendFile = async (fileDir, toUserName = 'filehelper', mediaId, stre
 
 
 export const sendImage = async (fileDir, toUserName = 'filehelper', mediaId, streamInfo = {}) => {
-    LogDebug(`Request to send a image(mediaId: ${mediaId}) to ${toUserName}: ${fileDir}`);
+    LogInfo(`Request to send a image(mediaId: ${mediaId}) to ${toUserName}: ${fileDir}`);
     const { fileReadStream, extName } = streamInfo;
     const preparedFile = await prepareFile(fileDir, fileReadStream);
 
@@ -534,7 +534,7 @@ export const sendImage = async (fileDir, toUserName = 'filehelper', mediaId, str
 
 };
 export const sendVideo = async (fileDir, toUserName = 'filehelper', mediaId, streamInfo = {}) => {
-    LogDebug(`Request to send a video(mediaId: ${mediaId}) to ${toUserName}: ${fileDir}`);
+    LogInfo(`Request to send a video(mediaId: ${mediaId}) to ${toUserName}: ${fileDir}`);
     const { fileReadStream } = streamInfo;
     const preparedFile = await prepareFile(fileDir, fileReadStream);
     if (!preparedFile) {
@@ -602,7 +602,7 @@ export const revokeMsg = async (msgId, toUserName, localId) => {
     };
 
     const res = await Fetch(url, params);
-    LogDebug(res);
+    LogInfo(res);
     return res;
 };
 
@@ -664,7 +664,7 @@ export const prepareFile = (fileDir, fileStream) => {
  * @returns {Promise.<*>}
  */
 export const uploadFile = async ({ fileDir, isPicture = false, isVideo = false, toUserName = 'filehelper', preparedFile }) => {
-    LogDebug(`Request to upload a ${isPicture ? 'picture' : (isVideo ? 'video' : 'file')}: ${fileDir}`);
+    LogInfo(`Request to upload a ${isPicture ? 'picture' : (isVideo ? 'video' : 'file')}: ${fileDir}`);
     preparedFile = preparedFile || await prepareFile(fileDir);
 
     const { fileMd5, bufferArr, fileSize } = preparedFile;
@@ -740,7 +740,7 @@ const uploadChunk = ({ buffer, fileMd5, fileSymbol, totalFileSize, fileName, fil
 
     return () => {
         //必须返回一个函数，延迟promise执行
-        LogDebug(`Request to upload a chunk ${fileSymbol}, chunks: ${chunks}, chunk: ${chunk} to: ${toUserName}`);
+        LogInfo(`Request to upload a chunk ${fileSymbol}, chunks: ${chunks}, chunk: ${chunk} to: ${toUserName}`);
         const formData = new FormData();
         formData.append('filename', buffer, {
             filename: fileName,

@@ -1,3 +1,5 @@
+import { EmojiCodeMap, MissMatchEmoji } from "./ConstValues";
+
 /**
  * @time 2019/5/27
  */
@@ -100,9 +102,24 @@ export const unescape = (str = '') => {
     return str.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
 };
 
+export const emojiFormatter = (data, key) => {
+    if (!data[key]) {
+        return;
+    }
+    const regA = /\<span class="emoji emoji(.{1,10})"\>\<\/span\>/g;
+    const reg = /\<span class="emoji emoji(.{1,10})"\>\<\/span\>/;
+
+    (data[key].match(regA) || []).forEach(str => {
+        const match = str.match(reg);
+        if (match && match[0] && match[1]) {
+            let emojiCode = MissMatchEmoji[match[1]] || match[1];
+            !!emojiCode && EmojiCodeMap[emojiCode] && (data[key] = data[key].replace(match[0], EmojiCodeMap[emojiCode]))
+        }
+    })
+};
+
 export const msgFormatter = (data, key) => {
-    //todo
-    // emoji_formatter(data, key)
+    emojiFormatter(data, key);
     data[key] = (data[key] + '').replace('<br/>', '\n');
     data[key] = unescape(data[key]);
 };

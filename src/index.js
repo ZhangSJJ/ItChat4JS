@@ -5,7 +5,7 @@
 import EventEmitter from 'events';
 import parser from 'fast-xml-parser';
 import Fetch, { FetchWithExcept, toBuffer, toJSON } from './Fetch';
-import { getDeviceID, getUrlDomain, isArray, WhileDoing } from './Utils';
+import { emojiFormatter, getDeviceID, getUrlDomain, isArray, WhileDoing } from './Utils';
 import qrCode from './qrcode-terminal';
 import Cookies from './node-js-cookie';
 import ReturnValueFormat from './ReturnValueFormat';
@@ -332,6 +332,7 @@ class NodeWeChat extends EventEmitter {
 
 
         GlobalInfo.LOGIN_INFO['InviteStartCount'] = res.InviteStartCount;
+        emojiFormatter(res.User, 'NickName');
         GlobalInfo.LOGIN_INFO.selfUserInfo = structFriendInfo(res.User);
         // this.contactIns.memberList.push(GlobalInfo.LOGIN_INFO.selfUserInfo);
 

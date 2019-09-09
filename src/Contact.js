@@ -2,11 +2,11 @@
  * 联系人相关
  * @time 2019/5/30
  */
-import { deepClone, getUrlDomain, isArray } from "./Utils";
+import { deepClone, emojiFormatter, getUrlDomain, isArray } from "./Utils";
 import Fetch from "./Fetch";
 import { structFriendInfo, updateInfoDict } from "./ConvertData";
 import GlobalInfo from './GlobalInfo';
-import { LogDebug, LogError } from "./Log";
+import { LogInfo, LogError } from "./Log";
 
 export default class Contact {
     constructor() {
@@ -173,6 +173,12 @@ export default class Contact {
             if (!chatRoom['UserName']) {
                 return;
             }
+            emojiFormatter(chatRoom, 'NickName');
+            (chatRoom.memberList || []).forEach(member => {
+                emojiFormatter(member, 'NickName');
+                emojiFormatter(member, 'DisplayName');
+                emojiFormatter(member, 'RemarkName');
+            });
             let oldChatRoom = this.chatRoomList.find(i => i.UserName === chatRoom['UserName']);
             //更新chatRoom的信息（除了MemberList）
             if (oldChatRoom) {
@@ -235,6 +241,9 @@ export default class Contact {
     updateLocalFriends(friendList = []) {
         const fullList = this.memberList.concat(this.mpList);
         friendList.forEach(friend => {
+            emojiFormatter(friend, 'NickName');
+            emojiFormatter(friend, 'DisplayName');
+            emojiFormatter(friend, 'RemarkName');
             let oldInfoDict = fullList.find(i => i.UserName === friend['UserName']);
             if (!oldInfoDict) {
                 oldInfoDict = deepClone(friend);
@@ -275,9 +284,9 @@ export default class Contact {
                         if ((userInfo['Uin'] || 0) === 0) {
                             userInfo['Uin'] = uin;
                             usernameChangedList.push(username);
-                            LogDebug('Uin fetched: ' + username + ', ' + uin);
+                            LogInfo('Uin fetched: ' + username + ', ' + uin);
                         } else if (userInfo['Uin'] !== uin) {
-                            LogDebug('Uin changed: ' + userInfo['Uin'] + ', ' + uin);
+                            LogInfo('Uin changed: ' + userInfo['Uin'] + ', ' + uin);
                         }
                     } else {
                         if (username.indexOf('@@') !== -1) {
@@ -308,15 +317,15 @@ export default class Contact {
 
                         }
                         usernameChangedList.push(username);
-                        LogDebug('Uin fetched: ' + username + ',  ' + uin)
+                        LogInfo('Uin fetched: ' + username + ',  ' + uin)
                     }
                 })
             } else {
-                LogDebug('Wrong length of uins & usernames: ' + uins.length + ',' + usernames.length);
+                LogInfo('Wrong length of uins & usernames: ' + uins.length + ',' + usernames.length);
             }
         } else {
-            LogDebug('No uins in 51 message');
-            LogDebug(msg['Content'])
+            LogInfo('No uins in 51 message');
+            LogInfo(msg['Content'])
         }
 
         return ret;
@@ -332,7 +341,7 @@ export default class Contact {
      * @returns {Promise.<*>}
      */
     async verifyFriend(userName, status = 2, verifyContent = '', autoUpdate = true) {
-        LogDebug('Add a friend or accept a friend');
+        LogInfo('Add a friend or accept a friend');
         const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxverifyuser`;
         const params = {
             method: 'post',
@@ -355,7 +364,7 @@ export default class Contact {
         };
 
         const res = await Fetch(url, params);
-        LogDebug(res);
+        LogInfo(res);
 
         if (autoUpdate) {
             await this.updateFriendInfo(userName)
