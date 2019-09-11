@@ -278,9 +278,11 @@ class NodeWeChat extends EventEmitter {
             GlobalInfo.LOGIN_INFO.cookies.updateCookies(cookieArr);
         }
 
-        res = await toJSON(res);
+        res = await toJSON(res).catch(e => {
+            LogError(JSON.stringify('ToJSON Error：' + e));
+        });
 
-        if (res.BaseResponse.Ret !== 0) {
+        if (!res || res.BaseResponse.Ret !== 0) {
             return;
         }
         GlobalInfo.LOGIN_INFO.syncKey = res.SyncKey;
