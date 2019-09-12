@@ -15,6 +15,17 @@ export default class Contact {
         this.mpList = [];//订阅号以及公众号
     }
 
+    /**
+     * 当主动或者被动logout之后主动请求login，需要清空联系人信息
+     * 重新登陆的时候需要清空上一次登录获取的联系人信息
+     * 两次登录获取的联系人信息中的UserName会重新生成
+     */
+    clearContactList() {
+        this.chatRoomList = [];
+        this.memberList = [];
+        this.mpList = [];
+    }
+
     async getContact(update = false) {
 
         let tempMemberList = [];

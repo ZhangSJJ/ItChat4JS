@@ -204,7 +204,7 @@ class NodeWeChat extends EventEmitter {
         const doingFn = async () => {
             const selector = await this.syncCheck();
             LogInfo('selector: ' + selector);
-            if (selector === '0') {
+            if (!selector || selector === '0') {
                 return;
             }
             const msgInfo = await this.getMsg();
@@ -365,7 +365,8 @@ class NodeWeChat extends EventEmitter {
     async login(receiving = false) {
         this.autoReceiving = receiving;
         await readAndMergeGlobalInfo();
-
+        //清空可能上次登录获取的联系人列表
+        this.contactIns.clearContactList();
         const isLogin = await this.showMobileLogin();
         if (isLogin) {
             await this.contactIns.getContact(true);

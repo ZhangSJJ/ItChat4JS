@@ -585,7 +585,7 @@ export const transmitMsg = async (content, msgType, toUserName) => {
             toUserName
         })
     }
-    return Promise.resolve().then(() => ({ BaseResponse: { Ret: 1 } }));
+    return Promise.resolve().then(() => ({ BaseResponse: { Ret: -1 } }));
 };
 
 export const revokeMsg = async (msgId, toUserName, localId) => {
