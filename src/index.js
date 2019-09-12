@@ -75,7 +75,7 @@ class NodeWeChat extends EventEmitter {
     drawQRImage(uuid) {
         const url = 'https://login.weixin.qq.com/l/' + uuid;
         qrCode.generate(url);
-        console.log('Please scan the QR code to log in.')
+        LogInfo('Please scan the QR code to log in.')
     };
 
     async webWxPushLogin() {
@@ -105,10 +105,15 @@ class NodeWeChat extends EventEmitter {
             uuid: userId,
             tip: 0,
             r: Math.floor(-now / 1579),
-            _: now,
             json: false,
             buffer: true
         };
+        if (GlobalInfo.LOGIN_INFO['logintime']) {
+            params._ = ++GlobalInfo.LOGIN_INFO['logintime'];
+        } else {
+            params._ = now;
+        }
+
         const res = await Fetch(url, params);
         const bufferText = res.toString();
 
@@ -122,15 +127,18 @@ class NodeWeChat extends EventEmitter {
                 /***清除循环***/
                 this.loginWhileDoing.end();
                 /***清除循环***/
-                console.log('You are login!');
+                LogInfo('You are login!');
                 await this.processLoginInfo(bufferText)
             } else if (status === 201) {
-                console.log('Please press confirm on your phone.')
+                LogInfo('Please press confirm on your phone.')
+            } else if (status === 408) {
+                LogInfo('Please wait for a moment...')
             } else {
-                console.log('Please wait for a moment...')
+                LogInfo('WeChat Mobile Client Refuse To Login!');
+                return process.exit(0);
             }
         } else {
-            throw new Error('获取登录信息失败！')
+            LogError('获取登录信息失败！')
         }
 
         return res;
@@ -182,7 +190,8 @@ class NodeWeChat extends EventEmitter {
 
             this.startReceiving();
         } else {
-            console.log(`Your wechat account may be LIMITED to log in WEB wechat, error info:${bufferText}`)
+            LogInfo(`Your wechat account may be LIMITED to log in WEB wechat, error info:${bufferText}`);
+            return process.exit(0);
         }
 
     };
@@ -191,6 +200,7 @@ class NodeWeChat extends EventEmitter {
         if (!this.autoReceiving) {
             return;
         }
+        this.getMsgWhileDoing && this.getMsgWhileDoing.end();
         const doingFn = async () => {
             const selector = await this.syncCheck();
             LogInfo('selector: ' + selector);
@@ -219,7 +229,7 @@ class NodeWeChat extends EventEmitter {
             uin: GlobalInfo.LOGIN_INFO['wxuin'],
             deviceid: getDeviceID(),
             synckey: GlobalInfo.LOGIN_INFO.syncKeyStr,
-            _: GlobalInfo.LOGIN_INFO['logintime'],
+            _: ++GlobalInfo.LOGIN_INFO['logintime'],
             json: false,
             buffer: true,
             headers: {
@@ -227,22 +237,11 @@ class NodeWeChat extends EventEmitter {
             }
         };
 
-        GlobalInfo.LOGIN_INFO['logintime'] += 1;
-
         const res = await FetchWithExcept(url, params, 'window.synccheck={retcode:"0",selector:"0"}');
         const bufferText = res.toString();
 
         const reg = /window.synccheck={retcode:"(\d+)",selector:"(\d+)"}/;
         const match = bufferText.match(reg);
-
-        if (match) {
-            if (match[1] === '0') {
-                return match[2];
-            } else {
-
-            }
-        }
-
 
         if (match && match[1] === '0') {
             return match[2];
@@ -254,7 +253,8 @@ class NodeWeChat extends EventEmitter {
         }
 
         LogInfo('User Log Out...' + match[1]);
-        return process.exit(0);
+        this.getMsgWhileDoing.end();
+        await this.login(true);
     };
 
     async getMsg() {
@@ -365,7 +365,6 @@ class NodeWeChat extends EventEmitter {
     async login(receiving = false) {
         this.autoReceiving = receiving;
         await readAndMergeGlobalInfo();
-
 
         const isLogin = await this.showMobileLogin();
         if (isLogin) {
