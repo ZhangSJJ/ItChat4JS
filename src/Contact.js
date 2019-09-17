@@ -522,7 +522,9 @@ export default class Contact {
      * @param useInvitation
      */
     async addMemberIntoChatRoom(chatRoomUserName, memberList, useInvitation = false) {
-
+        if (!isArray(memberList)) {
+            memberList = [memberList];
+        }
         if (!useInvitation) {
             let oldChatRoomInfo = this.getChatRoomInfo(chatRoomUserName);
             if (!oldChatRoomInfo) {
