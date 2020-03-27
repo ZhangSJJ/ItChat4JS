@@ -114,7 +114,11 @@ class NodeWeChat extends EventEmitter {
             params._ = now;
         }
 
-        const res = await Fetch(url, params);
+        const res = await FetchWithExcept(url, params, null);
+        if (!res) {
+            LogInfo('WeChat Mobile Client Refuse To Login!');
+            return process.exit(0);
+        }
         const bufferText = res.toString();
 
         const reg = /window.code=(\d+);/;
