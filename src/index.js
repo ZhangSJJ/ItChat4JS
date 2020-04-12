@@ -168,14 +168,15 @@ class NodeWeChat extends EventEmitter {
         GlobalInfo.LOGIN_INFO['deviceid'] = getDeviceID();
         GlobalInfo.LOGIN_INFO['logintime'] = Date.now();
 
-        urlInfo.forEach(([indexUrl, [fileUrl, syncUrl]]) => {
-            if (GlobalInfo.LOGIN_INFO.loginUrl.indexOf(indexUrl) !== -1) {
-                GlobalInfo.LOGIN_INFO['fileUrl'] = fileUrl;
-                GlobalInfo.LOGIN_INFO['syncUrl'] = syncUrl;
-            } else {
-                GlobalInfo.LOGIN_INFO['fileUrl'] = GlobalInfo.LOGIN_INFO['syncUrl'] = GlobalInfo.LOGIN_INFO.loginUrl;
-            }
-        });
+        const urlDetailInfo = urlInfo.find(info => GlobalInfo.LOGIN_INFO.loginUrl.indexOf(info[0]) !== -1)
+        if (urlDetailInfo) {
+            const [indexUrl, [fileUrl, syncUrl]] = urlDetailInfo;
+            GlobalInfo.LOGIN_INFO['fileUrl'] = `https://${fileUrl}/cgi-bin/mmwebwx-bin`;
+            GlobalInfo.LOGIN_INFO['syncUrl'] = `https://${syncUrl}/cgi-bin/mmwebwx-bin`;
+        } else {
+            GlobalInfo.LOGIN_INFO['fileUrl'] = GlobalInfo.LOGIN_INFO['syncUrl'] = GlobalInfo.LOGIN_INFO.loginUrl;
+        }
+
         res = await toBuffer(res);
         const bufferText = res.toString();
         const { ret, skey, wxsid, wxuin, pass_ticket } = ((parser.parse(bufferText)) || {}).error || {};
