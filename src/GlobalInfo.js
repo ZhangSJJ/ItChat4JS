@@ -3,10 +3,8 @@
  */
 'use strict';
 const VERSION = '1.3.10';
-const BASE_URL = 'https://login.weixin.qq.com';
 
-
-const DEFAULT_QR = 'QR.png';
+const LANG = 'zh_CN';
 
 const APP_ID = 'wx782c26e4c19acffb';
 
@@ -22,8 +20,10 @@ const BaseRequest = {
 const LOGIN_INFO = {
     deviceid: '',
     logintime: '',
-    fileUrl: '',
-    syncUrl: '',
+    hostUrl: 'https://wx.qq.com/cgi-bin/mmwebwx-bin',
+    loginUrl: 'https://login.weixin.qq.com/cgi-bin/mmwebwx-bin',
+    fileUrl: 'https://file.wx.qq.com/cgi-bin/mmwebwx-bin',
+    syncUrl: 'https://webpush.weixin.qq.com/cgi-bin/mmwebwx-bin',
     userId: '',
 
     skey: '',
@@ -58,12 +58,11 @@ const MESSAGE_TYPE = {
 
 export default {
     VERSION,
-    BASE_URL,
-    DEFAULT_QR,
     APP_ID,
     USER_AGENT,
     BaseRequest,
     LOGIN_INFO,
     EMIT_NAME,
-    MESSAGE_TYPE
+    MESSAGE_TYPE,
+    LANG
 };

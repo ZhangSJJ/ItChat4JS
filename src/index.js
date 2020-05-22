@@ -56,8 +56,12 @@ class NodeWeChat extends EventEmitter {
     }
 
     async getUserId() {
-        const url = GlobalInfo.BASE_URL + `/jslogin`;
-        const res = await Fetch(url, { appid: GlobalInfo.APP_ID, json: false, buffer: true });
+        const url = `${getUrlDomain(GlobalInfo.LOGIN_INFO.loginUrl)}/jslogin`;
+        const res = await Fetch(url, {
+            redirect_uri: encodeURIComponent(`${GlobalInfo.LOGIN_INFO.hostUrl}/webwxnewloginpage`) + `&fun=new&lang=${GlobalInfo.LANG}`,
+            appid: GlobalInfo.APP_ID,
+            json: false, buffer: true
+        });
         const bufferText = res.toString();
         if (bufferText) {
             const reg = /window.QRLogin.code = (\d+); window.QRLogin.uuid = "(\S+?)";/;
@@ -79,13 +83,13 @@ class NodeWeChat extends EventEmitter {
     };
 
     async webWxPushLogin() {
-        if (!GlobalInfo.LOGIN_INFO.loginUrl || !GlobalInfo.LOGIN_INFO.wxuin) {
+        if (!GlobalInfo.LOGIN_INFO.hostUrl || !GlobalInfo.LOGIN_INFO.wxuin) {
             return false;
         }
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxpushloginurl?uin=${GlobalInfo.LOGIN_INFO.wxuin}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxpushloginurl?uin=${GlobalInfo.LOGIN_INFO.wxuin}`;
         const pushLoginRes = await Fetch(url, {
             headers: {
-                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(GlobalInfo.LOGIN_INFO.loginUrl))
+                cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
         });
         LogInfo('WeChat Push Login Request Result:' + pushLoginRes.msg);
@@ -99,12 +103,12 @@ class NodeWeChat extends EventEmitter {
 
     async checkUserLogin(userId) {
         const now = Date.now();
-        const url = `${GlobalInfo.BASE_URL}/cgi-bin/mmwebwx-bin/login`;
+        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/login`;
         const params = {
             loginicon: true,
             uuid: userId,
             tip: 0,
-            r: Math.floor(-now / 1579),
+            r: ~new Date(),
             json: false,
             buffer: true
         };
@@ -116,8 +120,7 @@ class NodeWeChat extends EventEmitter {
 
         const res = await FetchWithExcept(url, params, null);
         if (!res) {
-            LogInfo('WeChat Mobile Client Refuse To Login!');
-            return process.exit(0);
+            return;
         }
         const bufferText = res.toString();
 
@@ -153,28 +156,34 @@ class NodeWeChat extends EventEmitter {
         const match = resText.match(reg);
         const redirectUrl = match[1];
         GlobalInfo.LOGIN_INFO.redirectUrl = redirectUrl;
-        GlobalInfo.LOGIN_INFO.loginUrl = redirectUrl.slice(0, redirectUrl.lastIndexOf('/'));
-        let res = await Fetch(redirectUrl, { json: false, redirect: 'manual' });
+        const hostUrl = redirectUrl.slice(0, redirectUrl.lastIndexOf('/'));
+        let res = await Fetch(redirectUrl, {
+            fun: 'new',
+            version: 'v2',
+            json: false,
+            redirect: 'manual'
+        });
         const cookieArr = (res.headers.raw() || {})['set-cookie'];
         GlobalInfo.LOGIN_INFO.cookies = new Cookies(cookieArr);
 
-        const urlInfo = [["wx2.qq.com", ["file.wx2.qq.com", "webpush.wx2.qq.com"]],
-            ["wx8.qq.com", ["file.wx8.qq.com", "webpush.wx8.qq.com"]],
-            ["qq.com", ["file.wx.qq.com", "webpush.wx.qq.com"]],
-            ["web2.wechat.com", ["file.web2.wechat.com", "webpush.web2.wechat.com"]],
-            ["wechat.com", ["file.web.wechat.com", "webpush.web.wechat.com"]]
+        const urlInfo = [["wx2.qq.com", ["login.wx2.qq.com", "file.wx2.qq.com", "webpush.wx2.qq.com"]],
+            ["wx8.qq.com", ["login.wx8.qq.com", "file.wx8.qq.com", "webpush.wx8.qq.com"]],
+            ["qq.com", ["login.wx.qq.com", "file.wx.qq.com", "webpush.wx.qq.com"]],
+            ["web2.wechat.com", ["login.web2.wechat.com", "file.web2.wechat.com", "webpush.web2.wechat.com"]],
+            ["wechat.com", ["login.web.wechat.com", "file.web.wechat.com", "webpush.web.wechat.com"]]
         ];
 
         GlobalInfo.LOGIN_INFO['deviceid'] = getDeviceID();
-        GlobalInfo.LOGIN_INFO['logintime'] = Date.now();
 
-        const urlDetailInfo = urlInfo.find(info => GlobalInfo.LOGIN_INFO.loginUrl.indexOf(info[0]) !== -1)
+        const urlDetailInfo = urlInfo.find(info => hostUrl.indexOf(info[0]) !== -1)
         if (urlDetailInfo) {
-            const [indexUrl, [fileUrl, syncUrl]] = urlDetailInfo;
+            const [indexUrl, [loginUrl, fileUrl, syncUrl]] = urlDetailInfo;
+            GlobalInfo.LOGIN_INFO['loginUrl'] = `https://${loginUrl}/cgi-bin/mmwebwx-bin`;
             GlobalInfo.LOGIN_INFO['fileUrl'] = `https://${fileUrl}/cgi-bin/mmwebwx-bin`;
             GlobalInfo.LOGIN_INFO['syncUrl'] = `https://${syncUrl}/cgi-bin/mmwebwx-bin`;
+            GlobalInfo.LOGIN_INFO.hostUrl = hostUrl;
         } else {
-            GlobalInfo.LOGIN_INFO['fileUrl'] = GlobalInfo.LOGIN_INFO['syncUrl'] = GlobalInfo.LOGIN_INFO.loginUrl;
+            // GlobalInfo.LOGIN_INFO['loginUrl'] = GlobalInfo.LOGIN_INFO['fileUrl'] = GlobalInfo.LOGIN_INFO['syncUrl'] = GlobalInfo.LOGIN_INFO.hostUrl;
         }
 
         res = await toBuffer(res);
@@ -218,6 +227,7 @@ class NodeWeChat extends EventEmitter {
             }
             const { msgList, contactList } = msgInfo;
             this.messageIns.produceMsg(msgList)
+
         };
 
         this.getMsgWhileDoing = new WhileDoing(doingFn, 3000);
@@ -226,7 +236,7 @@ class NodeWeChat extends EventEmitter {
     };
 
     async syncCheck() {
-        const url = `${GlobalInfo.LOGIN_INFO['syncUrl'] || GlobalInfo.LOGIN_INFO.loginUrl}/synccheck`;
+        const url = `${GlobalInfo.LOGIN_INFO['syncUrl'] || GlobalInfo.LOGIN_INFO.hostUrl}/synccheck`;
         const params = {
             r: Date.now(),
             skey: GlobalInfo.LOGIN_INFO['skey'],
@@ -264,7 +274,7 @@ class NodeWeChat extends EventEmitter {
 
     async getMsg() {
         LogInfo('Getting Message...');
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsync?sid=${GlobalInfo.LOGIN_INFO.wxsid}&skey=${GlobalInfo.LOGIN_INFO.skey}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxsync?sid=${GlobalInfo.LOGIN_INFO.wxsid}&skey=${GlobalInfo.LOGIN_INFO.skey}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             BaseRequest: GlobalInfo.BaseRequest,
             method: 'post',
@@ -300,7 +310,7 @@ class NodeWeChat extends EventEmitter {
     };
 
     async showMobileLogin() {
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxstatusnotify?lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxstatusnotify?lang=${GlobalInfo.LANG}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
 
         if (!GlobalInfo.LOGIN_INFO.cookies || !GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))) {
             return false;
@@ -323,8 +333,7 @@ class NodeWeChat extends EventEmitter {
     };
 
     async webInit() {
-        const now = Date.now();
-        let url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxinit?r=${Math.floor(-now / 1579)}&lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        let url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxinit?r=${~new Date()}&lang=${GlobalInfo.LANG}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             BaseRequest: GlobalInfo.BaseRequest,
             method: 'post',
@@ -335,7 +344,10 @@ class NodeWeChat extends EventEmitter {
         const res = await Fetch(url, params);
 
         GlobalInfo.LOGIN_INFO.syncKey = res.SyncKey;
+        GlobalInfo.LOGIN_INFO.skey = GlobalInfo.BaseRequest.Skey = res.SKey;
+
         GlobalInfo.LOGIN_INFO.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
+        GlobalInfo.LOGIN_INFO['logintime'] = Date.now();
 
 
         GlobalInfo.LOGIN_INFO['InviteStartCount'] = res.InviteStartCount;

@@ -40,6 +40,10 @@ export class WhileDoing {
         this.doId && clearTimeout(this.doId);
         this.doId = null;
     }
+
+    setIntervalTime(intervalTime) {
+        this.intervalTime = intervalTime;
+    }
 }
 
 
@@ -57,6 +61,14 @@ export const getUrlDomain = (url) => {
         return protocol + '//';
     }
     return [protocol, hostname].join('//');
+};
+
+export const getUrlProtocol = (url) => {
+    if (!url) {
+        return '';
+    }
+    const urlArr = url.split('//');
+    return urlArr[0];
 };
 
 

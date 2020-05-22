@@ -138,7 +138,7 @@ export default class Message {
                         LogInfo('Text...');
                     }
                 } else if (msg['MsgType'] === 3 || msg['MsgType'] === 47) {//picture
-                    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetmsgimg`;
+                    const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxgetmsgimg`;
                     const filename = convertDate().replace(/-|:|\s/g, '') + (msg['MsgType'] === 3 ? '.png' : '.gif');
                     const downloadFileFn = downloadFile(url, msg['MsgId'], filename);
                     msgInfo = {
@@ -148,7 +148,7 @@ export default class Message {
                     };
                     LogInfo('Picture...111');//todo .gif download failed
                 } else if (msg['MsgType'] === 34) {//voice
-                    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetvoice`;
+                    const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxgetvoice`;
                     const filename = convertDate().replace(/-|:|\s/g, '') + '.mp3';
                     const downloadFileFn = downloadFile(url, msg['MsgId'], filename);
                     msgInfo = {
@@ -177,7 +177,7 @@ export default class Message {
                     };
                     LogInfo('Name Card...');
                 } else if ([43, 62].indexOf(msg['MsgType']) !== -1) {//tiny video
-                    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetvideo`;
+                    const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxgetvideo`;
                     const filename = convertDate().replace(/-|:|\s/g, '') + '.mp4';
                     const downloadFileFn = downloadFile(url, msg['MsgId'], filename, true);
 
@@ -206,7 +206,7 @@ export default class Message {
                         };
                         LogInfo('Attachment...')
                     } else if (msg['AppMsgType'] === 8) {
-                        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetmsgimg`;
+                        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxgetmsgimg`;
                         const filename = convertDate().replace(/-|:|\s/g, '') + '.gif';
                         const downloadFileFn = downloadFile(url, msg['MsgId'], filename);
                         msgInfo = {
@@ -469,7 +469,7 @@ const sendMsg = async ({ url, msgType, content, toUserName = 'filehelper', media
 
 
 export const sendTextMsg = async (msg, toUserName) => {
-    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendmsg`;
+    const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxsendmsg`;
     LogInfo('Request to send a text message to ' + toUserName + ': ' + msg);
     return await sendMsg({
         url, msgType: 1, content: msg, toUserName
@@ -494,7 +494,7 @@ export const sendFile = async (fileDir, toUserName = 'filehelper', mediaId, stre
         }
         mediaId = uploadRes['MediaId'];
     }
-    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendappmsg?fun=async&f=json`;
+    const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxsendappmsg?fun=async&f=json`;
     extName = (extName || '').slice(1);
     if (!!fileDir) {
         filename = path.basename(fileDir);
@@ -526,7 +526,7 @@ export const sendImage = async (fileDir, toUserName = 'filehelper', mediaId, str
         }
         mediaId = uploadRes['MediaId'];
     }
-    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendmsgimg?fun=async&f=json`;
+    const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxsendmsgimg?fun=async&f=json`;
 
     return await sendMsg({
         url, msgType: 3, toUserName, mediaId
@@ -550,7 +550,7 @@ export const sendVideo = async (fileDir, toUserName = 'filehelper', mediaId, str
         mediaId = uploadRes['MediaId'];
     }
 
-    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendvideomsg?fun=async&f=json&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+    const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxsendvideomsg?fun=async&f=json&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
 
     return await sendMsg({
         url, msgType: 43, toUserName, mediaId
@@ -565,14 +565,14 @@ export const sendVideo = async (fileDir, toUserName = 'filehelper', mediaId, str
  * @returns {Promise<*>}
  */
 export const transmitMsg = async (content, msgType, toUserName) => {
-    let url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendmsg`, type;
+    let url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxsendmsg`, type;
     if (msgType === GlobalInfo.MESSAGE_TYPE.TEXT) {
         type = 1;
     } else if (msgType === GlobalInfo.MESSAGE_TYPE.PICTURE) {
-        url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendmsgimg?fun=async&f=json`;
+        url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxsendmsgimg?fun=async&f=json`;
         type = 3;
     } else if (msgType === GlobalInfo.MESSAGE_TYPE.VIDEO) {
-        url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxsendvideomsg?fun=async&f=json&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxsendvideomsg?fun=async&f=json&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         type = 43;
     } else if (msgType === GlobalInfo.MESSAGE_TYPE.MAP) {
         type = 48;
@@ -589,7 +589,7 @@ export const transmitMsg = async (content, msgType, toUserName) => {
 };
 
 export const revokeMsg = async (msgId, toUserName, localId) => {
-    const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxrevokemsg`;
+    const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxrevokemsg`;
     const params = {
         method: 'post',
         BaseRequest: GlobalInfo.BaseRequest,
@@ -710,7 +710,7 @@ export const uploadFile = async ({ fileDir, isPicture = false, isVideo = false, 
 
 
 const uploadChunk = ({ buffer, fileMd5, fileSymbol, totalFileSize, fileName, fileType, toUserName, chunks, chunk }) => {
-    const url = `${GlobalInfo.LOGIN_INFO.fileUrl || GlobalInfo.LOGIN_INFO.loginUrl}/webwxuploadmedia?f=json`;
+    const url = `${GlobalInfo.LOGIN_INFO.fileUrl || GlobalInfo.LOGIN_INFO.hostUrl}/webwxuploadmedia?f=json`;
     const uploadMediaRequest = {
         UploadType: 2,
         BaseRequest: GlobalInfo.BaseRequest,

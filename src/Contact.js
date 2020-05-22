@@ -129,7 +129,7 @@ export default class Contact {
         if (!isArray(userName)) {
             userName = [userName];
         }
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxbatchgetcontact?type=ex&r=${Date.now()}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxbatchgetcontact?type=ex&r=${Date.now()}`;
         const params = {
             method: 'POST',
             BaseRequest: GlobalInfo.BaseRequest,
@@ -153,7 +153,7 @@ export default class Contact {
         if (!isArray(userName)) {
             userName = [userName];
         }
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxbatchgetcontact?type=ex&r=${Date.now()}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxbatchgetcontact?type=ex&r=${Date.now()}`;
         const params = {
             method: 'POST',
             BaseRequest: GlobalInfo.BaseRequest,
@@ -171,7 +171,7 @@ export default class Contact {
     }
 
     async getContactList(seq = 0) {
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxgetcontact?r=${Date.now()}&seq=${seq}&skey=${GlobalInfo.LOGIN_INFO['skey']}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxgetcontact?r=${Date.now()}&seq=${seq}&skey=${GlobalInfo.LOGIN_INFO['skey']}`;
         return Fetch(url, {
             headers: {
                 cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
@@ -353,7 +353,7 @@ export default class Contact {
      */
     async verifyFriend(userName, status = 2, verifyContent = '', autoUpdate = true) {
         LogInfo('Add a friend or accept a friend');
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxverifyuser`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxverifyuser`;
         const params = {
             method: 'post',
             r: Date.now(),
@@ -396,7 +396,7 @@ export default class Contact {
             LogError('You Do Not Have A Friend Named :' + userName);
             return;
         }
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxoplog?lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxoplog?lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             method: 'post',
             UserName: userName,
@@ -423,7 +423,7 @@ export default class Contact {
             LogError('You Do Not Have A Friend, Chat Room Or Massive Platform Named :' + userName);
             return;
         }
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxoplog?pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxoplog?pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             method: 'post',
             UserName: userName,
@@ -450,7 +450,7 @@ export default class Contact {
             LogError('None Member To Add To Create A ChatRoom!');
             return;
         }
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxcreatechatroom?pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}&r=${Date.now()}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxcreatechatroom?pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}&r=${Date.now()}`;
         const params = {
             method: 'post',
             BaseRequest: GlobalInfo.BaseRequest,
@@ -470,7 +470,7 @@ export default class Contact {
             LogError('You Are Not In A Chat Room Named :' + chatRoomUserName);
             return;
         }
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxupdatechatroom?fun=modtopic&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxupdatechatroom?fun=modtopic&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             method: 'post',
             BaseRequest: GlobalInfo.BaseRequest,
@@ -498,7 +498,7 @@ export default class Contact {
             LogError('You Are Not In A Chat Room Named :' + chatRoomUserName);
             return;
         }
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxupdatechatroom?fun=delmember&lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxupdatechatroom?fun=delmember&lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             method: 'post',
             BaseRequest: GlobalInfo.BaseRequest,
@@ -543,7 +543,7 @@ export default class Contact {
             memberKeyName = 'InviteMemberList';
         }
 
-        const url = `${GlobalInfo.LOGIN_INFO.loginUrl}/webwxupdatechatroom?fun=${fun}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
+        const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxupdatechatroom?fun=${fun}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             method: 'post',
             BaseRequest: GlobalInfo.BaseRequest,

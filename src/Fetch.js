@@ -1,16 +1,28 @@
 import fetch from 'node-fetch';
+
+const http = require('http');
+const https = require('https');
 import querystring from 'querystring'
 import GlobalInfo from "./GlobalInfo";
 import { LogError } from "./Log";
+import { getUrlProtocol } from "./Utils";
+
+const httpAgent = new http.Agent({ keepAlive: true });
+const httpsAgent = new https.Agent({ keepAlive: true });
 
 const Fetch = (url, options = {}) => {
     const { headers, method = 'GET', json = true, buffer = false, formData = null, timeout, redirect = 'follow', ...restOptions } = options;
     const methodUpCase = method.toUpperCase();
 
+    const protocol = getUrlProtocol(url);
+    const agent = protocol.includes('https') ? httpsAgent : httpAgent;
+
     let finalOptions = {
         redirect,
         method: methodUpCase,
         credentials: 'include',
+        compress: true,
+        agent,
         headers: {
             'User-Agent': GlobalInfo.USER_AGENT,
             'Content-Type': 'application/json;charset=UTF-8',
@@ -30,9 +42,7 @@ const Fetch = (url, options = {}) => {
         }
     }
 
-
     let fetchData = fetch(url, finalOptions);
-
 
     if (json) {
         fetchData = fetchData.then(toJSON)
