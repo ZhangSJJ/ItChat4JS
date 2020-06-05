@@ -5,7 +5,7 @@ import { EmojiCodeMap, MissMatchEmoji } from "./ConstValues";
  */
 
 export class WhileDoing {
-    constructor(doingFn, intervalTime = 1000) {
+    constructor(doingFn, intervalTime = 0) {
         this.doingFn = doingFn;
         this.intervalTime = intervalTime;
         this.doId = null;
@@ -13,21 +13,29 @@ export class WhileDoing {
     }
 
     async start() {
+        this.endFlag = false;
         const doFn = async () => {
             this.clearId();
             await this.doingFn();
-            const promise = new Promise(resolve => {
-                this.doId = setTimeout(async () => {
-                    if (this.endFlag) {
-                        this.clearId();
+            if (this.intervalTime) {
+                const promise = new Promise(resolve => {
+                    this.doId = setTimeout(async () => {
+                        if (this.endFlag) {
+                            this.clearId();
+                            resolve();
+                            return;
+                        }
+                        await doFn();
                         resolve();
-                        return;
-                    }
-                    await doFn();
-                    resolve();
-                }, this.intervalTime)
-            });
-            await promise;
+                    }, this.intervalTime)
+                });
+                await promise;
+            } else {
+                if (this.endFlag) {
+                    return;
+                }
+                await doFn();
+            }
         };
         await doFn();
     }

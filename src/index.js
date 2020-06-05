@@ -230,7 +230,7 @@ class NodeWeChat extends EventEmitter {
 
         };
 
-        this.getMsgWhileDoing = new WhileDoing(doingFn, 3000);
+        this.getMsgWhileDoing = new WhileDoing(doingFn);
         this.getMsgWhileDoing.start();
 
     };
