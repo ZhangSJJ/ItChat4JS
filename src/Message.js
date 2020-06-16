@@ -461,7 +461,6 @@ const sendMsg = async ({ url, msgType, content, toUserName = 'filehelper', media
     if (!!mediaId) {
         params.Msg.MediaId = mediaId;
     }
-
     const res = await Fetch(url, params);
     LogInfo(res);
     return res;
@@ -526,7 +525,7 @@ export const sendImage = async (fileDir, toUserName = 'filehelper', mediaId, str
         }
         mediaId = uploadRes['MediaId'];
     }
-    const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxsendmsgimg?fun=async&f=json`;
+    const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxsendmsgimg?fun=async&f=json&lang=${GlobalInfo.LANG}`;
 
     return await sendMsg({
         url, msgType: 3, toUserName, mediaId
@@ -755,7 +754,6 @@ const uploadChunk = ({ buffer, fileMd5, fileSymbol, totalFileSize, fileName, fil
         Object.keys(dataJson).forEach(key => {
             formData.append(key, dataJson[key]);
         });
-
         return Fetch(url, {
             method: 'POST',
             formData,

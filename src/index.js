@@ -254,7 +254,6 @@ class NodeWeChat extends EventEmitter {
 
         const res = await FetchWithExcept(url, params, 'window.synccheck={retcode:"0",selector:"0"}');
         const bufferText = res.toString();
-
         const reg = /window.synccheck={retcode:"(\d+)",selector:"(\d+)"}/;
         const match = bufferText.match(reg);
 
@@ -301,7 +300,7 @@ class NodeWeChat extends EventEmitter {
             return;
         }
         GlobalInfo.LOGIN_INFO.syncKey = res.SyncKey;
-        GlobalInfo.LOGIN_INFO.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
+        GlobalInfo.LOGIN_INFO.syncKeyStr = ((res.SyncCheckKey || res.SyncKey).List || []).map(item => item.Key + '_' + item.Val).join('|');
 
         return {
             msgList: res.AddMsgList,
