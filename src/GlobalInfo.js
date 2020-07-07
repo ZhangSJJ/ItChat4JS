@@ -31,6 +31,7 @@ const LOGIN_INFO = {
     wxuin: '',
     pass_ticket: '',
     syncKey: '',
+    syncCheckKey: '',
     syncKeyStr: '',
     selfUserInfo: {},
 

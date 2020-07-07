@@ -299,8 +299,12 @@ class NodeWeChat extends EventEmitter {
         if (!res || res.BaseResponse.Ret !== 0) {
             return;
         }
-        GlobalInfo.LOGIN_INFO.syncKey = res.SyncKey;
-        GlobalInfo.LOGIN_INFO.syncKeyStr = ((res.SyncCheckKey || res.SyncKey).List || []).map(item => item.Key + '_' + item.Val).join('|');
+
+        this.setSyncKey(res.SyncKey)
+        this.setSyncCheckKey(res.SyncCheckKey)
+
+        GlobalInfo.LOGIN_INFO.syncKeyStr = ((GlobalInfo.LOGIN_INFO.syncCheckKey || GlobalInfo.LOGIN_INFO.syncKey).List || [])
+            .map(item => item.Key + '_' + item.Val).join('|');
 
         return {
             msgList: res.AddMsgList,
@@ -341,8 +345,7 @@ class NodeWeChat extends EventEmitter {
             }
         };
         const res = await Fetch(url, params);
-
-        GlobalInfo.LOGIN_INFO.syncKey = res.SyncKey;
+        this.setSyncKey(res.SyncKey)
         GlobalInfo.LOGIN_INFO.skey = GlobalInfo.BaseRequest.Skey = res.SKey;
 
         GlobalInfo.LOGIN_INFO.syncKeyStr = (res.SyncKey.List || []).map(item => item.Key + '_' + item.Val).join('|');
@@ -412,6 +415,22 @@ class NodeWeChat extends EventEmitter {
                 callback && callback(msgInfo, messageFrom);
             }
         })
+    }
+
+    setSyncKey(syncKey) {
+        if (syncKey && syncKey.Count > 0) {
+            GlobalInfo.LOGIN_INFO.syncKey = syncKey;
+        } else {
+            LogError("JS Function: setSyncKey. Error. no synckey");
+        }
+    }
+
+    setSyncCheckKey(syncCheckKey) {
+        if (syncCheckKey && syncCheckKey.Count > 0) {
+            GlobalInfo.LOGIN_INFO.syncCheckKey = syncCheckKey;
+        } else {
+            LogError("JS Function: setSyncCheckKey. Error. no synccheckkey");
+        }
     }
 }
 
