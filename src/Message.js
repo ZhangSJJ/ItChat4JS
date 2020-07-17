@@ -10,7 +10,7 @@ import crypto from 'crypto';
 import FormData from 'form-data';
 import mineType from 'mime-types';
 
-import { convertDate, getUrlDomain, msgFormatter } from "./Utils";
+import { convertDate, getBaseRequest, getUrlDomain, msgFormatter } from "./Utils";
 import Fetch from './Fetch';
 import GlobalInfo from './GlobalInfo';
 import { structFriendInfo } from "./ConvertData";
@@ -438,10 +438,7 @@ const makeDirs = (pathStr) => {
 const sendMsg = async ({ url, msgType, content, toUserName = 'filehelper', mediaId }) => {
     const params = {
         method: 'post',
-        BaseRequest: {
-            ...GlobalInfo.BaseRequest,
-            DeviceID: 'e' + ((Math.random() + '').substring(2, 17))
-        },
+        BaseRequest: getBaseRequest(),
         Msg: {
             Type: msgType,
             FromUserName: GlobalInfo.LOGIN_INFO.selfUserInfo.UserName,
@@ -591,7 +588,7 @@ export const revokeMsg = async (msgId, toUserName, localId) => {
     const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxrevokemsg`;
     const params = {
         method: 'post',
-        BaseRequest: GlobalInfo.BaseRequest,
+        BaseRequest: getBaseRequest(),
         ClientMsgId: localId || (Date.now() + ''),
         SvrMsgId: msgId,
         ToUserName: toUserName,
@@ -712,7 +709,7 @@ const uploadChunk = ({ buffer, fileMd5, fileSymbol, totalFileSize, fileName, fil
     const url = `${GlobalInfo.LOGIN_INFO.fileUrl || GlobalInfo.LOGIN_INFO.hostUrl}/webwxuploadmedia?f=json`;
     const uploadMediaRequest = {
         UploadType: 2,
-        BaseRequest: GlobalInfo.BaseRequest,
+        BaseRequest: getBaseRequest(),
         ClientMediaId: Date.now(),
         TotalLen: totalFileSize,
         StartPos: 0,

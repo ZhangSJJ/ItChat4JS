@@ -2,7 +2,7 @@
  * 联系人相关
  * @time 2019/5/30
  */
-import { deepClone, emojiFormatter, getUrlDomain, isArray } from "./Utils";
+import { deepClone, emojiFormatter, getBaseRequest, getUrlDomain, isArray } from "./Utils";
 import Fetch from "./Fetch";
 import { structFriendInfo, updateInfoDict } from "./ConvertData";
 import GlobalInfo from './GlobalInfo';
@@ -132,7 +132,7 @@ export default class Contact {
         const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxbatchgetcontact?type=ex&r=${Date.now()}`;
         const params = {
             method: 'POST',
-            BaseRequest: GlobalInfo.BaseRequest,
+            BaseRequest: getBaseRequest(),
             Count: userName.length,
             List: userName.map(i => ({ ChatRoomId: '', UserName: i })),
             headers: {
@@ -156,7 +156,7 @@ export default class Contact {
         const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxbatchgetcontact?type=ex&r=${Date.now()}`;
         const params = {
             method: 'POST',
-            BaseRequest: GlobalInfo.BaseRequest,
+            BaseRequest: getBaseRequest(),
             Count: userName.length,
             List: userName.map(i => ({ EncryChatRoomId: '', UserName: i })),
             headers: {
@@ -358,7 +358,7 @@ export default class Contact {
             method: 'post',
             r: Date.now(),
             pass_ticket: GlobalInfo.LOGIN_INFO.pass_ticket,
-            BaseRequest: GlobalInfo.BaseRequest,
+            BaseRequest: getBaseRequest(),
             Opcode: status,
             VerifyUserListSize: 1,
             VerifyUserList: [{
@@ -402,7 +402,7 @@ export default class Contact {
             UserName: userName,
             CmdId: 2,
             RemarkName: alias,
-            BaseRequest: GlobalInfo.BaseRequest,
+            BaseRequest: getBaseRequest(),
             headers: {
                 cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
             }
@@ -429,7 +429,7 @@ export default class Contact {
             UserName: userName,
             CmdId: 3,
             OP: +isPinned,
-            BaseRequest: GlobalInfo.BaseRequest,
+            BaseRequest: getBaseRequest(),
             RemarkName: oldFriendInfo.RemarkName,
             headers: {
                 cookie: GlobalInfo.LOGIN_INFO.cookies.getAll(getUrlDomain(url))
@@ -453,7 +453,7 @@ export default class Contact {
         const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxcreatechatroom?pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}&r=${Date.now()}`;
         const params = {
             method: 'post',
-            BaseRequest: GlobalInfo.BaseRequest,
+            BaseRequest: getBaseRequest(),
             MemberCount: memberList.length,
             MemberList: memberList.map(member => ({ UserName: member['UserName'] })),
             Topic: topic,
@@ -473,7 +473,7 @@ export default class Contact {
         const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxupdatechatroom?fun=modtopic&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             method: 'post',
-            BaseRequest: GlobalInfo.BaseRequest,
+            BaseRequest: getBaseRequest(),
             ChatRoomName: chatRoomUserName,
             NewTopic: name,
             headers: {
@@ -501,7 +501,7 @@ export default class Contact {
         const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxupdatechatroom?fun=delmember&lang=zh_CN&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             method: 'post',
-            BaseRequest: GlobalInfo.BaseRequest,
+            BaseRequest: getBaseRequest(),
             ChatRoomName: chatRoomUserName,
             DelMemberList: memberList.map(member => member['UserName']).join(','),
             headers: {
@@ -546,7 +546,7 @@ export default class Contact {
         const url = `${GlobalInfo.LOGIN_INFO.hostUrl}/webwxupdatechatroom?fun=${fun}&pass_ticket=${GlobalInfo.LOGIN_INFO.pass_ticket}`;
         const params = {
             method: 'post',
-            BaseRequest: GlobalInfo.BaseRequest,
+            BaseRequest: getBaseRequest(),
             ChatRoomName: chatRoomUserName,
             [memberKeyName]: memberList.map(member => member['UserName']).join(','),
             headers: {

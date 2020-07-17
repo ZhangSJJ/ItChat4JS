@@ -1,4 +1,5 @@
 import { EmojiCodeMap, MissMatchEmoji } from "./ConstValues";
+import GlobalInfo from "./GlobalInfo";
 
 /**
  * @time 2019/5/27
@@ -157,3 +158,8 @@ export const convertDate = (date) => {
 export const getDeviceID = () => {
     return "e" + ("" + Math.random().toFixed(15)).substring(2, 17)
 };
+
+export const getBaseRequest = () => ({
+    ...GlobalInfo.BaseRequest,
+    DeviceID: getDeviceID()
+})

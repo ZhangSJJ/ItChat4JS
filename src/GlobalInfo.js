@@ -18,7 +18,6 @@ const BaseRequest = {
     DeviceID: ''
 };
 const LOGIN_INFO = {
-    deviceid: '',
     logintime: '',
     hostUrl: 'https://wx.qq.com/cgi-bin/mmwebwx-bin',
     loginUrl: 'https://login.weixin.qq.com/cgi-bin/mmwebwx-bin',
