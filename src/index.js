@@ -222,9 +222,10 @@ class NodeWeChat extends EventEmitter {
             if (!msgInfo) {
                 return;
             }
-            const { msgList, contactList } = msgInfo;
+            const { msgList, modContactList, delContactList } = msgInfo;
             this.messageIns.produceMsg(msgList)
-
+            this.contactIns.updateContactList(modContactList);
+            this.contactIns.deleteContactList(delContactList);
         };
 
         this.getMsgWhileDoing = new WhileDoing(doingFn);
@@ -305,7 +306,8 @@ class NodeWeChat extends EventEmitter {
 
         return {
             msgList: res.AddMsgList,
-            contactList: res.ModContactList
+            modContactList: res.ModContactList,
+            delContactList: res.DelContactList
         }
     };
 
@@ -355,23 +357,7 @@ class NodeWeChat extends EventEmitter {
         // this.contactIns.memberList.push(GlobalInfo.LOGIN_INFO.selfUserInfo);
 
         // # deal with contact list returned when init
-
-        const contactList = res.ContactList || [],
-            chatRoomList = [], otherList = [];
-
-        contactList.forEach(item => {
-            if (item.Sex !== 0) {
-                otherList.push(item)
-            } else if (item.UserName.indexOf('@@') !== -1) {
-                item.MemberList = [];
-                chatRoomList.push(item)
-            } else if (item.UserName.indexOf('@') !== -1) {
-                otherList.push(item)
-            }
-        });
-        this.contactIns.updateLocalChatRoom(chatRoomList);
-        this.contactIns.updateLocalFriends(otherList);
-
+        this.contactIns.updateContactList(res.ContactList);
     };
 
     async run() {

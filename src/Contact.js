@@ -271,6 +271,51 @@ export default class Contact {
         })
     }
 
+    updateContactList(contactList = []) {
+        const chatRoomList = [], otherList = [];
+        contactList.forEach(item => {
+            if (item.Sex !== 0) {
+                otherList.push(item)
+            } else if (item.UserName.indexOf('@@') !== -1) {
+                item.MemberList = [];
+                chatRoomList.push(item)
+            } else if (item.UserName.indexOf('@') !== -1) {
+                otherList.push(item)
+            }
+        });
+        chatRoomList.length && this.updateLocalChatRoom(chatRoomList);
+        otherList.length && this.updateLocalFriends(otherList);
+    }
+
+    deleteContactList(delContactList = []) {
+        const chatRoomList = [], otherList = [];
+        delContactList.forEach(item => {
+            if (item.Sex !== 0) {
+                otherList.push(item)
+            } else if (item.UserName.indexOf('@@') !== -1) {
+                item.MemberList = [];
+                chatRoomList.push(item)
+            } else if (item.UserName.indexOf('@') !== -1) {
+                otherList.push(item)
+            }
+        });
+
+        if (otherList.length) {
+            // 好友列表 + 订阅号以及公众号
+            const fullList = this.memberList.concat(this.mpList);
+            otherList.forEach(deleteFriend => {
+                const deleteUseInfo = fullList.find(i => i.UserName === deleteFriend['UserName']);
+                if (deleteUseInfo) {
+                    if ((deleteUseInfo['VerifyFlag'] & 8) === 0) {
+                        this.memberList = this.memberList.filter(i => i.UserName !== deleteFriend['UserName'])
+                    } else {
+                        this.mpList = this.mpList.filter(i => i.UserName !== deleteFriend['UserName'])
+                    }
+                }
+            })
+        }
+    }
+
     updateLocalUin(msg) {
         const usernameChangedList = [];
         let ret = {
