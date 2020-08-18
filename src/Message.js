@@ -72,7 +72,9 @@ export default class Message {
             msg['ActualNickName'] = '';
             msg['IsAt'] = false;
         } else {
-            msg['ActualNickName'] = member['DisplayName'] || member['NickName'] || '';
+            const myFriend = this.getFriendInfo(member.UserName) || {};
+            // 如果是自己的好友，优先使用RemarkName
+            msg['ActualNickName'] = myFriend.RemarkName || member['DisplayName'] || member['NickName'] || '';
             const chatRoomSelfUserInfo = chatRoom['Self'];
             const hasSpecialStr = msg.Content.indexOf('\u2005') !== -1;
             const atFlag = `@${chatRoomSelfUserInfo['DisplayName'] || GlobalInfo.LOGIN_INFO.selfUserInfo.NickName || ''}` + (hasSpecialStr ? '\u2005' : ' ');
