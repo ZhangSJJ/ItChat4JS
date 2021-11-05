@@ -10,6 +10,19 @@ ItChat4JS -- 用NodeJs扩展个人微信号的能力
 ```javascript
 npm install itchat4js
 ```
+
+## 重要更新---2021-11-05
+#### 桌面版本微信 hack某些微信号天生无法网页登录的缺陷
+```javascript
+    // 启动的时候只需要增加desktopMode为true即可
+    itChat4JsIns.login({ desktopMode: true});
+```
+或者
+```javascript
+    // 启动的时候只需要增加desktopMode为true即可
+    itChat4JsIns.run({ desktopMode: true});
+```
+
 ## 简单入门实例
 
 有了ItChat4JS，如果你想要给文件传输助手发一条信息，只需要这样：

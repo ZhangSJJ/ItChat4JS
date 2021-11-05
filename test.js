@@ -105,7 +105,7 @@ const fn = async () => {
         }
 
     });
-    await itChat4JSIns.run();
+    await itChat4JSIns.run({ desktopMode: true });
     mainCountInfo = itChat4JSIns.getContactInfoByName('比都个是还不你了对NIAN');
 };
 

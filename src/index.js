@@ -126,7 +126,6 @@ class NodeWeChat extends EventEmitter {
 
         const reg = /window.code=(\d+);/;
         const match = bufferText.match(reg);
-
         if (match) {
             const status = +match[1];
             if (status === 200) {
@@ -157,12 +156,20 @@ class NodeWeChat extends EventEmitter {
         const redirectUrl = match[1];
         GlobalInfo.LOGIN_INFO.redirectUrl = redirectUrl;
         const hostUrl = redirectUrl.slice(0, redirectUrl.lastIndexOf('/'));
-        let res = await Fetch(redirectUrl, {
+        let params = {
             fun: 'new',
             version: 'v2',
             json: false,
-            redirect: 'manual'
-        });
+            redirect: 'manual',
+        }
+        if (this.desktopMode) {
+            params = {
+                ...params,
+                mod: 'desktop',
+                headers: GlobalInfo.DESKTOP_MODE_HEADER
+            }
+        }
+        let res = await Fetch(redirectUrl, params);
         const cookieArr = (res.headers.raw() || {})['set-cookie'];
         GlobalInfo.LOGIN_INFO.cookies = new Cookies(cookieArr);
 
@@ -360,12 +367,13 @@ class NodeWeChat extends EventEmitter {
         this.contactIns.updateContactList(res.ContactList);
     };
 
-    async run() {
-        await this.login(true);
+    async run(options) {
+        await this.login({ ...options, receiving: true });
     }
 
-    async login(receiving = false) {
-        this.autoReceiving = receiving;
+    async login({ receiving = false, desktopMode = false } = {}) {
+        this.autoReceiving = receiving; // 监听消息
+        this.desktopMode = desktopMode; // 桌面版本微信 hack某些微信号天生无法网页登录的缺陷
         await readAndMergeGlobalInfo();
         //清空可能上次登录获取的联系人列表
         this.contactIns.clearContactList();
