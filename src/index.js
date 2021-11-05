@@ -273,7 +273,7 @@ class NodeWeChat extends EventEmitter {
 
         LogInfo('User Log Out...' + match[1]);
         this.getMsgWhileDoing.end();
-        await this.login(true);
+        await this.login({ receiving: true, desktopMode: this.desktopMode });
     };
 
     async getMsg() {

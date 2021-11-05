@@ -1,6 +1,6 @@
 {
   "name": "itchat4js",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "wechat itchat api robot weixin personal extend",
   "main": "./lib/index.js",
   "scripts": {
